@@ -1,4 +1,5 @@
 #include "BlendNode.h"
+#include "HelloWorldCmd.h"
 #include <maya/MFnPlugin.h>
 
 MTypeId BlendNode::id(0x00000002);
@@ -71,6 +72,9 @@ MStatus initializePlugin(MObject obj) {
 	// Specify we are making a deformer node
 	status = plugin.registerNode("blendNode", BlendNode::id, BlendNode::creator,
 		BlendNode::initialize, MPxNode::kDeformerNode);
+
+	// Make a hello world command
+	status = plugin.registerCommand("helloWorld", HelloWorld::creator);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	return status;
@@ -81,6 +85,9 @@ MStatus uninitializePlugin(MObject obj) {
 	MFnPlugin plugin(obj);
 
 	status = plugin.deregisterNode(BlendNode::id);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	status = plugin.deregisterCommand("helloWorld");
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	return status;

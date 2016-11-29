@@ -18,6 +18,7 @@
 class BlendNode : public MPxDeformerNode {
 public:
 	BlendNode() {};
+
 	virtual MStatus deform(MDataBlock& data, MItGeometry& itGeo,
 		const MMatrix &localToWorldMatrix, unsigned int mIndex);
 	static void* creator();
