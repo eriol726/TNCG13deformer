@@ -50,6 +50,6 @@ public:
 	static MObject aDynamicFriction;
 	static MObject aForce;
 	static MObject aTorque;
-
+	static MObject aInflation;
 };
 #endif

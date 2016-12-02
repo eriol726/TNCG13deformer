@@ -25,3 +25,4 @@ connectAttr -f gravityField1.magnitude deformerNode1.gravityMagnitude;
 // Rigid body attributes
 connectAttr -f time1.outTime deformerNode1.time;
 
+$(SolutionDir)$(Platform)\$(Configuration)\
