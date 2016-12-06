@@ -10,13 +10,22 @@ MObject DeformerNode::aGravityDirection;
 MObject DeformerNode::aCurrentTime;
 MObject DeformerNode::aInflation;
 
+MTime DeformerNode::tPrevious;
+
+
+
+
 void* DeformerNode::creator() { return new DeformerNode; }
 
 MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 	const MMatrix &localToWorldMatrix, unsigned int mIndex) {
 	
 	MStatus status;
+	MMatrix world_to_local_matrix = localToWorldMatrix.inverse();
 
+	MTime currentTime = MAnimControl::currentTime();
+	int currentFrame = (int)currentTime.value();
+	
 	
 	float env = data.inputValue(envelope).asFloat();
 	float inflation = data.inputValue(aInflation).asDouble();
@@ -35,43 +44,69 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		MObject oInputGeom = hInput.outputValue().child(inputGeom).asMesh();
 	MFnMesh fnInputMesh(oInputGeom);
 
-
-	//http://www.ngreen.org/
-
-	// Get the normal array from the input mesh
-	MFloatVectorArray normals = MFloatVectorArray();
-	fnInputMesh.getVertexNormals(true, normals, MSpace::kTransform);
+	
 
 
-	MPoint pt;
-	MVector nrm;
-	int idx;
-	float w = 0.0f;
-	// Loop through the geometry and set vertex positions
-	for (; !itGeo.isDone(); itGeo.next()) {
+	if (currentFrame == 1)
+	{
+		
+		std::vector<MPoint> initPositions;
+		
+		for (; !itGeo.isDone(); itGeo.next()) {
 
-		idx = itGeo.index();
-		nrm = MVector(normals[idx]);
+			MPoint pt = itGeo.position();
+			initPositions.push_back(pt); 
 
-		// Get the input point
-		pt = itGeo.position();
+		}
+		
+		particleSystem = new ParticleSystem(initPositions);
+
+		//http://www.ngreen.org/
+
+		// Get the normal array from the input mesh
+		MFloatVectorArray normals = MFloatVectorArray();
+		fnInputMesh.getVertexNormals(true, normals, MSpace::kTransform);
 
 
-		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+		MPoint pt;
+		MVector nrm;
+		
+		float w = 0.0f;
+		// Loop through the geometry and set vertex positions
+		// Get the current frame
 
-		cout << "vertex: " << pt.x << endl;
+		MTime tNow = data.inputValue(aCurrentTime).asTime();
+		MTime timeDiff = tNow - tPrevious;
+		int timeDiffInt = (int)timeDiff.value();
+		tPrevious = tNow;
+	}
+	else {
+		std::vector<MPoint> newPositions = particleSystem->shapeMatch();
 
+		//MPointArray newPositions = particleSystem->getPositions();
+	
+		for (; !itGeo.isDone(); itGeo.next()) {
 
-		fflush(stdout);
-		fflush(stderr);
+			int idx = itGeo.index();
+			//nrm = MVector(normals[idx]);
 
-		MPoint new_pos = pt + (nrm * inflation * env);
+			// Get the input point
+			//pt = itGeo.position();
 
-		if (new_pos.y < 0.0)
-			 new_pos.y = 0.0;
+			//cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
-		// Set the new output point
-		itGeo.setPosition(new_pos );
+									  // << "tNow: " << timeDiffInt << endl;
+									  //cout << "timeDiff: " << currentFrame << endl;
+			//cout << "newShape: " << newPositions[idx].y << endl;
+
+			//fflush(stdout);
+			//fflush(stderr);
+
+			MPoint new_pos = newPositions.at(idx);
+
+			// Set the new output point
+			itGeo.setPosition(new_pos);
+		}
 	}
 
 	return MS::kSuccess;

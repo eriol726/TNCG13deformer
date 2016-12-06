@@ -16,6 +16,8 @@
 #include <maya/MFnUnitAttribute.h>
 #include <maya/MPxDeformerNode.h>
 #include <maya/MAnimControl.h>
+#include "ParticleSystem.h"
+
 
 class DeformerNode : public MPxDeformerNode {
 public:
@@ -51,5 +53,9 @@ public:
 	static MObject aForce;
 	static MObject aTorque;
 	static MObject aInflation;
+
+private:
+	static MTime tPrevious;
+	ParticleSystem* particleSystem;
 };
 #endif
