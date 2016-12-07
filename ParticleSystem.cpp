@@ -1,16 +1,32 @@
 #include "ParticleSystem.h"
 
 
-ParticleSystem::ParticleSystem(std::vector<MPoint> initP) {
+ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
+	
+	arma::fvec3 temp_v;
 
+	temp_v[0] = velocity.x;
+	temp_v[1] = velocity.y;
+	temp_v[2] = velocity.z;
 
 	for (auto i = initP.begin(); i != initP.end(); i++) {
 		
+		arma::fvec3 temp_x;
+		
+		temp_x[0] = (float)i->x;
+		temp_x[1] = (float)i->y;
+		temp_x[2] = (float)i->z;
+
+	
 		positions.push_back(*i);
-		x.push_back(*i);
-		x_0.push_back(*i);
+		x.push_back(temp_x);
+		x_0.push_back(temp_x);
+		goal.push_back(temp_x);
+		v.push_back(temp_v);
 
 	}
+
+	
 	// initialCenterOfMass
 	x_com_0 = computeCOM();
 	
@@ -20,8 +36,10 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP) {
 ParticleSystem::~ParticleSystem(){}
 
 // computing t and t0
-MPoint ParticleSystem::computeCOM() {
-	MPoint com = MPoint(0, 0, 0);
+arma::fvec3 ParticleSystem::computeCOM() {
+	// same value for all dimensions
+	arma::fvec3 com;
+
 	for (auto i = x.begin(); i != x.end(); i++) {
 		com += *i;
 	}
@@ -33,12 +51,18 @@ MPoint ParticleSystem::computeCOM() {
 }
 
 
-/**
-MPoint ParticleSystem::getPositions(int idx) {
-	return positions;
-}*/
 
-std::vector<MPoint> ParticleSystem::shapeMatch() {
+MPoint ParticleSystem::getPositions(int idx) {
+
+	MPoint pt;
+	pt.x = x[idx][0];
+	pt.y = x[idx][1];
+	pt.z = x[idx][2];
+
+	return pt;
+}
+
+std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	
 	/*
 	for (auto i = positions.begin(); i != positions.end(); i++) {
@@ -47,7 +71,7 @@ std::vector<MPoint> ParticleSystem::shapeMatch() {
 		}
 		
 	} */
-
+	
 	// Allocate
 	arma::fmat q = arma::fmat(3, x.size());
 	arma::fmat p = arma::fmat(3, x.size());
@@ -60,20 +84,20 @@ std::vector<MPoint> ParticleSystem::shapeMatch() {
 	arma::fmat V;
 	arma::fvec s;
 
-	MPoint x_com = computeCOM(); // centerOfMass;
+	arma::fvec3 x_com = computeCOM(); // centerOfMass;
 
 								 // sida 18, mitten
 	
 	for (int i = 0; i < x.size(); ++i)
 	{
 
-		p(0, i) = x[i].x - x_com.x;
-		p(1, i) = x[i].y - x_com.y;
-		p(2, i) = x[i].z - x_com.z;
+		p(0, i) = x[i](0) - x_com(0);
+		p(1, i) = x[i](1)- x_com(1);
+		p(2, i) = x[i](2) - x_com(2);
 
-		q(0, i) = x_0[i].x - x_com_0.x;
-		q(1, i) = x_0[i].y - x_com_0.y;
-		q(2, i) = x_0[i].z - x_com_0.z;
+		q(0, i) = x_0[i](0) - x_com_0(0);
+		q(1, i) = x_0[i](1) - x_com_0(1);
+		q(2, i) = x_0[i](2) - x_com_0(2);
 	}
 	float m = 1.0f;
 	Apq = p * q.t();
@@ -103,13 +127,27 @@ std::vector<MPoint> ParticleSystem::shapeMatch() {
 			Amat[r][c] = A(r, c);
 		}
 	}
-
-	// Convert to glm matrix
-	glm::mat3 R_glm = armaToGlmMat(R, 3);
-	glm::mat3 A_glm = armaToGlmMat(A, 3);
 	
+	
+	//ensuring that det(A) = 1
+	A = A / pow(arma::det(A), 1 / 3);
+
+	// Convert to glm 
+	//glm::mat3 R_glm = armaToGlmMat(R, 3);
+	//glm::mat3 A_glm = armaToGlmMat(A, 3);
+	//mpointToGlmVec(x_0);
+	
+	
+
 	for (int i = 0; i < x.size(); i++) {
-		//goal[i] = (beta*A_glm + (1.0f - beta) * R_glm) * (x_0[i] - x_com_0) + x_com;
+		goal[i] = (beta*A + (1.0f - beta) * R) * (x_0[i] - x_com_0) + x_com;
+	}
+
+
+	float alpha;
+	for (int i = 0; i < x.size(); i++) {
+		v[i] = (goal[i] - x[i]) / dt;
+		x[i] = goal[i] - x[i];
 
 	}
 
@@ -124,10 +162,10 @@ std::vector<MPoint> ParticleSystem::shapeMatch() {
 			}
 		}
 		
-	}*/
+	}
 		
 	
-		
+	*/	
 
 	return positions;
 }
@@ -155,3 +193,20 @@ glm::mat3 armaToGlmMat(arma::fmat M, int size)
 		
 	return glmMatrix;
 }
+
+/*
+std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p)
+{
+	glm::vec3 glmVec= glm::vec3(1.0);
+
+	for (auto i = p.begin(); i != p.end(); i++) {
+		*i->x;
+		*i->x;
+		*i->x;
+	}
+	glmVec[0] = (float)p.x;
+	glmVec[1] = (float)p.y;
+	glmVec[2] = (float)p.z;
+
+	return glmVec;
+}*/

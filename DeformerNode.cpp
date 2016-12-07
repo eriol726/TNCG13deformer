@@ -25,6 +25,9 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 	MTime currentTime = MAnimControl::currentTime();
 	int currentFrame = (int)currentTime.value();
+
+	MTime tNow = data.inputValue(aCurrentTime).asTime();
+	
 	
 	
 	float env = data.inputValue(envelope).asFloat();
@@ -59,7 +62,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 		}
 		
-		particleSystem = new ParticleSystem(initPositions);
+		MVector initVelocity = MVector(0, 0, 0);
+		particleSystem = new ParticleSystem(initPositions, initVelocity);
 
 		//http://www.ngreen.org/
 
@@ -77,13 +81,22 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		// Loop through the geometry and set vertex positions
 		// Get the current frame
 
-		MTime tNow = data.inputValue(aCurrentTime).asTime();
-		MTime timeDiff = tNow - tPrevious;
-		int timeDiffInt = (int)timeDiff.value();
-		tPrevious = tNow;
+		
+
+
+
 	}
 	else {
-		std::vector<MPoint> newPositions = particleSystem->shapeMatch();
+		MTime timeDiff = tNow - tPrevious;
+		int timeDiffInt = (int)timeDiff.value();
+		int tNowInt = (int)tNow.value();
+		tPrevious = tNow;
+
+		int simSteps = 10;
+		for (int i = 0; i < simSteps; ++i)
+		{
+			particleSystem->shapeMatch((float)(timeDiff.value() / (float)simSteps));
+		}
 
 		//MPointArray newPositions = particleSystem->getPositions();
 	
@@ -95,16 +108,20 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 			// Get the input point
 			//pt = itGeo.position();
 
-			//cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+			cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
-									  // << "tNow: " << timeDiffInt << endl;
-									  //cout << "timeDiff: " << currentFrame << endl;
-			//cout << "newShape: " << newPositions[idx].y << endl;
+			cout << "tNow: " << tNowInt << endl;
+			cout << "timeDiff: " << timeDiffInt << endl;
+			cout << "currentFrame: " << currentFrame << endl;
 
-			//fflush(stdout);
-			//fflush(stderr);
+			MPoint new_pos = particleSystem->getPositions(idx)*worldToLocalMatrixInv;
+			float position = (float)new_pos.y;
+			cout << "position.x: " << position << endl;
 
-			MPoint new_pos = newPositions.at(idx)*worldToLocalMatrixInv;
+			fflush(stdout);
+			fflush(stderr);
+
+			
 
 			// Set the new output point
 			itGeo.setPosition(new_pos);
