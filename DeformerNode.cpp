@@ -21,7 +21,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 	const MMatrix &localToWorldMatrix, unsigned int mIndex) {
 	
 	MStatus status;
-	MMatrix world_to_local_matrix = localToWorldMatrix.inverse();
+	MMatrix worldToLocalMatrixInv = localToWorldMatrix.inverse();
 
 	MTime currentTime = MAnimControl::currentTime();
 	int currentFrame = (int)currentTime.value();
@@ -54,7 +54,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		
 		for (; !itGeo.isDone(); itGeo.next()) {
 
-			MPoint pt = itGeo.position();
+			MPoint pt = itGeo.position()*localToWorldMatrix;
 			initPositions.push_back(pt); 
 
 		}
@@ -71,6 +71,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		MPoint pt;
 		MVector nrm;
 		
+	
+
 		float w = 0.0f;
 		// Loop through the geometry and set vertex positions
 		// Get the current frame
@@ -102,7 +104,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 			//fflush(stdout);
 			//fflush(stderr);
 
-			MPoint new_pos = newPositions.at(idx);
+			MPoint new_pos = newPositions.at(idx)*worldToLocalMatrixInv;
 
 			// Set the new output point
 			itGeo.setPosition(new_pos);

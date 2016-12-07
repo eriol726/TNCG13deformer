@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <maya/MPointArray.h>
-
+#include <armadillo>
 
 // The Ocean Spray in Your Face
 struct tParticle
@@ -24,8 +24,17 @@ public:
 
 	std::vector<MPoint> getPositions();
 	std::vector<MPoint> shapeMatch();
+	glm::mat3 armaToGlmMat(arma::fmat M, int size);
+	glm::vec3 armaToGlmMat(arma::fvec v, int size);
+	MPoint computeCOM();
 private:
 	glm::vec3 velocity;
 	glm::vec3 gravity;
 	std::vector<MPoint> positions;
+	std::vector<MPoint> x;
+	std::vector<MPoint> x_0;
+	std::vector<MPoint> goal;
+	MPoint x_com_0;
+
+
 };
