@@ -21,7 +21,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 	const MMatrix &localToWorldMatrix, unsigned int mIndex) {
 	
 	MStatus status;
-	MMatrix worldToLocalMatrixInv = localToWorldMatrix.inverse();
+	MMatrix localToWorldMatrixInv = localToWorldMatrix.inverse();
 
 	MTime currentTime = MAnimControl::currentTime();
 	int currentFrame = (int)currentTime.value();
@@ -92,9 +92,10 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		int tNowInt = (int)tNow.value();
 		tPrevious = tNow;
 
-		int simSteps = 10;
+		int simSteps = 2;
 		for (int i = 0; i < simSteps; ++i)
 		{
+			particleSystem->updatePositions((float)(timeDiff.value() / (float)simSteps));
 			particleSystem->shapeMatch((float)(timeDiff.value() / (float)simSteps));
 		}
 
@@ -114,7 +115,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 			cout << "timeDiff: " << timeDiffInt << endl;
 			cout << "currentFrame: " << currentFrame << endl;
 
-			MPoint new_pos = particleSystem->getPositions(idx)*worldToLocalMatrixInv;
+			MPoint new_pos = particleSystem->getPositions(idx)*localToWorldMatrixInv;
 			float position = (float)new_pos.y;
 			cout << "position.x: " << position << endl;
 

@@ -28,6 +28,8 @@ public:
 	glm::vec3 armaToGlmMat(arma::fvec v, int size);
 	std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p);
 	arma::fvec3 computeCOM();
+	void updatePositions(float dt);
+
 private:
 	glm::vec3 velocity;
 	glm::vec3 gravity;

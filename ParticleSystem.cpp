@@ -114,58 +114,30 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 
 	float beta = 0.5f;
-
-	
-	float Rmat[3][3];
-	float Amat[3][3];
-
-	for (int r = 0; r<3; r++)
-	{
-		for (int c = 0; c<3; c++)
-		{
-			Rmat[r][c] = R(r,c);
-			Amat[r][c] = A(r, c);
-		}
-	}
 	
 	
 	//ensuring that det(A) = 1
 	A = A / pow(arma::det(A), 1 / 3);
 
-	// Convert to glm 
-	//glm::mat3 R_glm = armaToGlmMat(R, 3);
-	//glm::mat3 A_glm = armaToGlmMat(A, 3);
-	//mpointToGlmVec(x_0);
+
 	
-	
+	//calculate finla rotation R
+	R = (beta*A + (1.0f - beta) * R);
 
 	for (int i = 0; i < x.size(); i++) {
-		goal[i] = (beta*A + (1.0f - beta) * R) * (x_0[i] - x_com_0) + x_com;
+		goal[i] = R * (x_0[i] - x_com_0) + x_com;
 	}
 
 
-	float alpha;
+	float alpha = 0.5f;
 	for (int i = 0; i < x.size(); i++) {
 		v[i] = (goal[i] - x[i]) / dt;
 		x[i] = goal[i] - x[i];
 
 	}
 
-	//calculate finla rotation R
-	/*
-	for (int r = 0; r < 3; r++) {
-		for (int c = 0; c < 3; c++) {
-			for (int i = 0; i < x.size(); i++) {
-				goal[i].x = (beta*Amat[r][c] + (1.0f - beta) * Rmat[r][c]) * (x_0[i].x - x_com_0.x) + x_com.x;
-				goal[i].y = (beta*Amat[r][c] + (1.0f - beta) * Rmat[r][c]) * (x_0[i].y - x_com_0.y) + x_com.y;
-				goal[i].z = (beta*Amat[r][c] + (1.0f - beta) * Rmat[r][c]) * (x_0[i].z - x_com_0.z) + x_com.z;
-			}
-		}
-		
-	}
-		
 	
-	*/	
+
 
 	return positions;
 }
@@ -194,6 +166,12 @@ glm::mat3 armaToGlmMat(arma::fmat M, int size)
 	return glmMatrix;
 }
 
+void ParticleSystem::updatePositions(float dt) {
+	for (int i = 0; i < x.size(); i++)
+	{
+		x[i] += x[i] * dt;
+	}
+}
 /*
 std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p)
 {

@@ -5,13 +5,12 @@ move -r 0 4.0 0;
 
 // Create dynamics stuff 
 select -r pPlane1;
-
+CreatePassiveRigidBody;
 
 
 
 // Put a deformer node on the sphere
 select -r pSphereShape1;
-CreatePassiveRigidBody;
 Gravity;
 select -r pSphereShape1;
 deformer -type deformerNode;
