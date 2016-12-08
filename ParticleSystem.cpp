@@ -41,12 +41,13 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 		goal.push_back(temp_x);
 		v.push_back(temp_v);
 		force.push_back(temp_force);
+		mg.push_back(temp_force);
 		
 
 	}
 
 	
-	// initialCenterOfMass
+	// center of mass of initial shape t_0
 	x_com_0 = computeCOM();
 	
 }
@@ -102,14 +103,6 @@ MPoint ParticleSystem::getPositions(int idx) {
 
 std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	
-	/*
-	for (auto i = positions.begin(); i != positions.end(); i++) {
-		if (i->y < 0) {
-			i->y = 0.0;
-		}
-		
-	} */
-	
 	// Allocate
 	arma::fmat q = arma::fmat(3, x.size());
 	arma::fmat p = arma::fmat(3, x.size());
@@ -118,28 +111,17 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	arma::fmat A;
 	arma::fmat S;
 	arma::fmat R;
+	arma::fmat R_linear;
 	arma::fmat U;
 	arma::fmat V;
 	arma::fvec s;
 
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-	cout << "-------------------------------------------------------------------- "  << endl;
-
-
-
-	fflush(stdout);
-	fflush(stderr);
-
-	arma::fvec3 x_com = computeCOM(); // centerOfMass;
-
+	// center of mass of actual shape, t
+	arma::fvec3 x_com = computeCOM(); 
 	
-
-								 // sida 18, mitten
-	
+	//define the relative locations,  sida 18, mitten
 	for (int i = 0; i < x.size(); ++i)
 	{
-
 		p(0, i) = x[i](0) - x_com(0);
 		p(1, i) = x[i](1)- x_com(1);
 		p(2, i) = x[i](2) - x_com(2);
@@ -148,43 +130,40 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 		q(1, i) = x_0[i](1) - x_com_0(1);
 		q(2, i) = x_0[i](2) - x_com_0(2);
 	}
+
+	// mass of each paticles
 	float m = 1.0f;
-	Apq = p * q.t();
+
+	// rotation part
+	Apq = m * p * q.t();
+
+	// scaling part
 	Aqq = (m*q*q.t()).i();
 
+	// linear transformation matrix
 	A = Apq*Aqq;
-	//S = A.t()*A;
-	//S = sqrt(S);
 
-	// Singular value decomposition should be polar
-	
+	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
 
-
-	float beta = 0.5f;
-	
-	
-	//ensuring that det(A) = 1
+	//ensuring that det(A) = 1, To make sure that volume is conserved
 	A = A/ pow(arma::det(A), 1 / 3);
 
+	//Aply linera matrix to the rotation matrix 
+	R_linear = (beta*A + (1.0f - beta) * R);
 
-	
-	//calculate finla rotation R
-	R = (beta*A + (1.0f - beta) * R);
-
+	// computing the goal positions
 	for (int i = 0; i < x.size(); i++) {
-		goal[i] = R * (x_0[i] - x_com_0) + x_com;
-
-		
+		goal[i] = R_linear * (x_0[i] - x_com_0) + x_com;
 	}
 
 
-	float alpha = 0.5f;
+
+	// updating the final positions an velocity
 	for (int i = 0; i < x.size(); i++) {
 		v[i] += (goal[i] - x[i]) / dt;
 		x[i] += goal[i] - x[i];
-
 	}
 
 	
@@ -195,10 +174,10 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 
 void ParticleSystem::applyGravity(float dt) {
-	arma::fvec3 zeroVec;
+	arma::fvec3 planeVelocity;
 
-	zeroVec.zeros();
-
+	planeVelocity.zeros();
+	float planeMass = mass*2;
 
 	arma::fvec3 dir;
 
@@ -206,14 +185,24 @@ void ParticleSystem::applyGravity(float dt) {
 	dir(1) = gravityDirection.y;
 	dir(2) =  gravityDirection.z;
 
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+	cout << "elasticity: " << elasticity << endl;
+	cout << "dynamicFriction: " << dynamicFriction << endl;
+
+
+
+	fflush(stdout);
+	fflush(stderr);
+
 
 	for (int i = 0; i < force.size(); i++) {
 		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
-		force[i] = dir * gravityMagnitude * mass;
+		mg[i] = dir * gravityMagnitude * mass;
+		force[i] = mg[i];
 
-		float elasticity = 0.2f;
-		float dynamicFriction = 0.2f;
+		
 		// adding force from floor
 		if (x[i](1) <= 0) {
 			arma::fvec3 normal;
@@ -221,15 +210,19 @@ void ParticleSystem::applyGravity(float dt) {
 			normal(1) = 1.f;
 			normal(2) = 0.f;
 
-			arma::fvec3 vDiff = (v[i]) - zeroVec; // Floor is static
+			arma::fvec3 relativeVelocity = v[i] - planeVelocity; // Floor is static
 
-			arma::fvec3 vDiff1 = normal * arma::dot(normal, vDiff); // vDiff composant in normal direction
-			arma::fvec3 vDiff2 = vDiff - vDiff1; // vDiff composant orthogonal to normal direction
+			arma::fvec3 contactNormal = normal * arma::dot(relativeVelocity, normal); // vDiff composant in normal direction
 
-			arma::fvec3 collisionImpulse = -(elasticity + 1) * vDiff1 * mass;
-			arma::fvec3 frictionImpulse = -dynamicFriction * vDiff2 * mass;
+			// Collision response http://gafferongames.com/virtual-go/collision-response-and-coulomb-friction/
+			arma::fvec3 linearMomentum = relativeVelocity*mass;
+			arma::fvec3 impulseAmplitude = -(elasticity + 1) * contactNormal / (1/mass +1/planeMass);
 
-			force[i] += (collisionImpulse + frictionImpulse) / dt;
+			// Coulomb Friction
+			arma::fvec3 frictionImpulse = -dynamicFriction * contactNormal * mass;
+
+			// derivative of impluse gives a force
+			force[i] = mg[i] + (impulseAmplitude + frictionImpulse) / dt;
 			x[i](1) = 0.01;
 		}
 		// Add collision impulse and friction
@@ -238,6 +231,8 @@ void ParticleSystem::applyGravity(float dt) {
 }
 
 void ParticleSystem::updatePositions(float dt) {
+
+	// integrating velocity gives distance
 	for (int i = 0; i < x.size(); i++)
 	{
 
@@ -251,13 +246,15 @@ void ParticleSystem::updateVelocities(float dt)
 {
 	// Euler integration
 	arma::fvec3 zeroVec;
+	arma::fvec3 acceleration;
 	zeroVec.zeros();
-
-
+	acceleration.zeros();
+	//  integrating acceleration gives velocity
 	for (int i = 0; i < v.size(); ++i)
 	{
-		
-		v[i] += force[i] / mass * dt;
+		//F=ma
+		acceleration = force[i] / mass;
+		v[i] += acceleration * dt;
 		force[i] = zeroVec; // Reset all forces
 	}
 }

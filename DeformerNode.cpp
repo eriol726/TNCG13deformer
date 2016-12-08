@@ -8,8 +8,10 @@
 MTypeId DeformerNode::id(0x00000002);
 MObject DeformerNode::aCurrentTime;
 MObject DeformerNode::aInitVelocity;
-
 MObject DeformerNode::aMass;
+MObject DeformerNode::aDynamicFriction;
+MObject DeformerNode::aElasticity;
+MObject DeformerNode::aDeformation;
 
 MTime DeformerNode::tPrevious;
 ParticleSystem* DeformerNode::particleSystem;
@@ -57,6 +59,9 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 		//particleSystem->gravityMagnitude = data.inputValue(aGravityMagnitude).asDouble();
 		particleSystem->mass = data.inputValue(aMass).asDouble();
+		particleSystem->elasticity = data.inputValue(aElasticity).asDouble();
+		particleSystem->dynamicFriction = data.inputValue(aDynamicFriction).asDouble();
+		particleSystem->beta = data.inputValue(aDeformation).asDouble();
 
 
 		tNow = data.inputValue(aCurrentTime).asTime();
@@ -78,11 +83,11 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		fflush(stdout);
 		fflush(stderr);
 
-		int updatesPerTimeStep = 2;
-		float dt = 1 / 24.0  / updatesPerTimeStep  ;
+		int timeStep = 2;
+		float dt = 1 / (24.0  * timeStep)  ;
 
 		
-		for (int i = 0; i < updatesPerTimeStep; ++i)
+		for (int i = 0; i < timeStep; ++i)
 		{
 			particleSystem->applyGravity(dt);
 			particleSystem->updateVelocities(dt);
@@ -134,16 +139,40 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(10.0);
 	nAttr.setChannelBox(true);
 
+	aElasticity = nAttr.create("elasticity", "el", MFnNumericData::kDouble, 0.0);
+	nAttr.setDefault(0.5);
+	nAttr.setMin(0.0);
+	nAttr.setMax(1.0);
+	nAttr.setChannelBox(true);
+
+	aDynamicFriction = nAttr.create("dynamicFriction", "df", MFnNumericData::kDouble, 0.0);
+	nAttr.setDefault(0.5);
+	nAttr.setMin(0.0);
+	nAttr.setMax(1.0);
+	nAttr.setChannelBox(true);
+
+	aDynamicFriction = nAttr.create("deformation", "de", MFnNumericData::kDouble, 0.0);
+	nAttr.setDefault(0.5);
+	nAttr.setMin(0.0);
+	nAttr.setMax(1.0);
+	nAttr.setChannelBox(true);
+
 
 	// Add the attribute
 	addAttribute(aCurrentTime);
 	addAttribute(aMass);
 	addAttribute(aInitVelocity);
+	addAttribute(aElasticity);
+	addAttribute(aDynamicFriction);
+	addAttribute(aDeformation);
 
 	// Link inputs that change the output of the mesh
 	attributeAffects(aCurrentTime, outputGeom);
 	attributeAffects(aMass, outputGeom);
 	attributeAffects(aInitVelocity, outputGeom);
+	attributeAffects(aElasticity, outputGeom);
+	attributeAffects(aDynamicFriction, outputGeom);
+	attributeAffects(aDeformation, outputGeom);
 
 	// Make the deformer weights paintable
 	//MGlobal::executeCommand("makePaintable -attrType multiFloat -sm deformer blendNode weights;");

@@ -6,16 +6,6 @@
 #include <maya/MPointArray.h>
 #include <armadillo>
 
-// The Ocean Spray in Your Face
-struct tParticle
-{
-	tParticle *prev, *next; // LINK
-	glm::vec3 pos; // CURRENT POSITION
-	glm::vec3 prevPos; // PREVIOUS POSITION
-	glm::vec3 dir; // CURRENT DIRECTION WITH SPEED
-	int life; // HOW LONG IT WILL LAST
-
-};
 
 class ParticleSystem {
 public:
@@ -25,6 +15,10 @@ public:
 
 	const double gravityMagnitude = 9.82;
 	double mass;
+	double elasticity;
+	double dynamicFriction;
+	double beta;
+
 	glm::vec3 gravityDirection = glm::vec3(0.0, -1.0, 0.0);
 
 	MPoint getPositions(int idx);
@@ -45,6 +39,7 @@ private:
 	std::vector<arma::fvec3> v;
 	std::vector<arma::fvec3> goal;
 	std::vector<arma::fvec3> force;
+	std::vector<arma::fvec3> mg;
 	arma::fvec3 x_com_0;
 
 

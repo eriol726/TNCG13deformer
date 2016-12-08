@@ -34,19 +34,10 @@ public:
 	// Object attributes from rigid body
 	static MObject aCurrentTime;
 	static MObject aInitVelocity;
-	static MObject aSpin;
-	static MObject aCenterOfMass;
-	static MObject aImpulse;
-	static MObject aImpulsePosition;
-	static MObject aSpinImpulse;
 	static MObject aMass;
-	static MObject aVolume;
-	static MObject aBounciness;
-	static MObject aDamping;
-	static MObject aStaticFriction;
 	static MObject aDynamicFriction;
-	static MObject aForce;
-	static MObject aTorque;
+	static MObject aElasticity;
+	static MObject aDeformation;
 
 private:
 	static MTime tPrevious;
