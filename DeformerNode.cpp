@@ -4,11 +4,15 @@
 #include <sstream>
 #include <maya/MIOStream.h>
 
+#define SIGN(a) (a < 0 ? -1 : 1)
+
 MTypeId DeformerNode::id(0x00000002);
 MObject DeformerNode::aGravityMagnitude;
 MObject DeformerNode::aGravityDirection;
 MObject DeformerNode::aCurrentTime;
 MObject DeformerNode::aInflation;
+
+MObject DeformerNode::aMass;
 
 MTime DeformerNode::tPrevious;
 
@@ -35,8 +39,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 
 	MTime currTime = data.inputValue(aCurrentTime).asTime();
-	double gravity = data.inputValue(aGravityMagnitude).asDouble();
-	MVector direction = data.inputValue(aGravityDirection).asVector();
+	
 	
 
 	//Get the input mesh (fnInputMesh) http://www.chadvernon.com/
@@ -87,16 +90,35 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 	}
 	else {
+
+		particleSystem->gravityMagnitude = data.inputValue(aGravityMagnitude).asDouble();
+		particleSystem->mass = data.inputValue(aMass).asDouble();
+
+		
+		//arma::fvec3 gravityDirection;
+		//MVector direction = data.inputValue(aGravityDirection).asVector();
+		
+		//gravityDirection(0) = (float)direction.x;
+		//gravityDirection(1) = (float)direction.y;
+		//gravityDirection(2) = (float)direction.z;
+
+		//particleSystem->gravityDirection = gravityDirection;
+
+		tNow = data.inputValue(aCurrentTime).asTime();
 		MTime timeDiff = tNow - tPrevious;
 		int timeDiffInt = (int)timeDiff.value();
 		int tNowInt = (int)tNow.value();
 		tPrevious = tNow;
 
-		int simSteps = 2;
-		for (int i = 0; i < simSteps; ++i)
+		int updatesPerTimeStep = 2;
+		float dt = 1 / 24.0 / updatesPerTimeStep * SIGN(timeDiffInt) ;
+
+		
+		for (int i = 0; i < updatesPerTimeStep * abs(timeDiffInt); ++i)
 		{
-			particleSystem->updatePositions((float)(timeDiff.value() / (float)simSteps));
-			particleSystem->shapeMatch((float)(timeDiff.value() / (float)simSteps));
+			particleSystem->applyGravity(dt);
+			particleSystem->updatePositions(dt);
+			particleSystem->shapeMatch(dt);
 		}
 
 		//MPointArray newPositions = particleSystem->getPositions();
@@ -108,20 +130,25 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 			// Get the input point
 			//pt = itGeo.position();
-
+			/*
 			cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
 			cout << "tNow: " << tNowInt << endl;
 			cout << "timeDiff: " << timeDiffInt << endl;
 			cout << "currentFrame: " << currentFrame << endl;
 
-			MPoint new_pos = particleSystem->getPositions(idx)*localToWorldMatrixInv;
+			
 			float position = (float)new_pos.y;
 			cout << "position.x: " << position << endl;
-
+			
 			fflush(stdout);
 			fflush(stderr);
 
+			*/
+
+			MPoint new_pos = particleSystem->getPositions(idx)*localToWorldMatrixInv;
+
+			
 			
 
 			// Set the new output point
@@ -159,6 +186,12 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(1.0);
 	nAttr.setChannelBox(true);
 
+	aMass = nAttr.create("Mass", "ms", MFnNumericData::kDouble, 0.0);
+	nAttr.setDefault(1.0);
+	nAttr.setMin(0.0);
+	nAttr.setMax(10.0);
+	nAttr.setChannelBox(true);
+
 	aInflation = nAttr.create("inflation", "in", MFnNumericData::kDouble, 0.0);
 	nAttr.setMin(0.0);
 	nAttr.setMax(10.0);
@@ -170,12 +203,14 @@ MStatus DeformerNode::initialize() {
 	addAttribute(aGravityMagnitude);
 	addAttribute(aGravityDirection);
 	addAttribute(aInflation);
+	addAttribute(aMass);
 
 	// Link inputs that change the output of the mesh
 	attributeAffects(aCurrentTime, outputGeom);
 	attributeAffects(aGravityMagnitude, outputGeom);
 	attributeAffects(aGravityDirection, outputGeom);
 	attributeAffects(aInflation, outputGeom);
+	attributeAffects(aMass, outputGeom);
 
 	// Make the deformer weights paintable
 	//MGlobal::executeCommand("makePaintable -attrType multiFloat -sm deformer blendNode weights;");

@@ -22,22 +22,28 @@ public:
 	ParticleSystem(std::vector<MPoint> initPositions, MVector velocity);
 	~ParticleSystem() ;
 
+
+	double gravityMagnitude;
+	double mass;
+	arma::fvec3 gravityDirection;
+
 	MPoint getPositions(int idx);
 	std::vector<MPoint> shapeMatch(float dt);
 	glm::mat3 armaToGlmMat(arma::fmat M, int size);
 	glm::vec3 armaToGlmMat(arma::fvec v, int size);
 	std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p);
 	arma::fvec3 computeCOM();
+	void applyGravity(float dt);
 	void updatePositions(float dt);
 
 private:
-	glm::vec3 velocity;
-	glm::vec3 gravity;
+
 	std::vector<MPoint> positions;
 	std::vector<arma::fvec3> x;
 	std::vector<arma::fvec3> x_0;
 	std::vector<arma::fvec3> v;
 	std::vector<arma::fvec3> goal;
+	std::vector<arma::fvec3> force;
 	arma::fvec3 x_com_0;
 
 

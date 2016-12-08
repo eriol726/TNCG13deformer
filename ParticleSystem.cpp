@@ -2,6 +2,15 @@
 
 
 ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
+
+	/*
+	x.resize(initP.size());
+	x_0.resize(initP.size());
+	v.resize(initP.size());
+	force.resize(initP.size());
+	goal.resize(initP.size());
+	positions.resize(initP.size());*/
+
 	
 	arma::fvec3 temp_v;
 
@@ -9,20 +18,34 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 	temp_v[1] = velocity.y;
 	temp_v[2] = velocity.z;
 
+	arma::fvec3 temp_x;
+
+	temp_x(0) = 0.f;
+	temp_x(1) = 0.f;
+	temp_x(2) = 0.f;
+
+	arma::fvec3 temp_force;
+
+	temp_force(0) = 0.f;
+	temp_force(1) = 0.f;
+	temp_force(2) = 0.f;
+
 	for (auto i = initP.begin(); i != initP.end(); i++) {
 		
-		arma::fvec3 temp_x;
 		
-		temp_x[0] = (float)i->x;
-		temp_x[1] = (float)i->y;
-		temp_x[2] = (float)i->z;
+		
+		temp_x(0) = (float)i->x;
+		temp_x(1) = (float)i->y;
+		temp_x(2) = (float)i->z;
 
-	
 		positions.push_back(*i);
 		x.push_back(temp_x);
 		x_0.push_back(temp_x);
 		goal.push_back(temp_x);
 		v.push_back(temp_v);
+		force.push_back(temp_force);
+
+		
 
 	}
 
@@ -40,14 +63,24 @@ arma::fvec3 ParticleSystem::computeCOM() {
 	// same value for all dimensions
 	arma::fvec3 com;
 
+	com(0) = 0.f;
+	com(1) = 0.f;
+	com(2) = 0.f;
+
+	int inx = 0;
 	for (auto i = x.begin(); i != x.end(); i++) {
 		com += *i;
+		
+		
 	}
 	
 	float totalMass = x.size();
 	float w = 1.0f;
 
-	return (w*com / totalMass)  ;
+	
+
+	//return (w*com / totalMass)  ;
+	return (1.0f / static_cast<float>(x.size())) * com;
 }
 
 
@@ -84,7 +117,25 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	arma::fmat V;
 	arma::fvec s;
 
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+	cout << "-------------------------------------------------------------------- "  << endl;
+
+
+
+	fflush(stdout);
+	fflush(stderr);
+
 	arma::fvec3 x_com = computeCOM(); // centerOfMass;
+
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+	cout << "com: " << x_com << endl;
+	cout << "com_0: " << x_com_0 << endl;
+
+
+	fflush(stdout);
+	fflush(stderr);
 
 								 // sida 18, mitten
 	
@@ -117,7 +168,7 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	
 	
 	//ensuring that det(A) = 1
-	A = A / pow(arma::det(A), 1 / 3);
+	A = A/ pow(arma::det(A), 1 / 3);
 
 
 	
@@ -126,13 +177,15 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 	for (int i = 0; i < x.size(); i++) {
 		goal[i] = R * (x_0[i] - x_com_0) + x_com;
+
+		
 	}
 
 
 	float alpha = 0.5f;
 	for (int i = 0; i < x.size(); i++) {
-		v[i] = (goal[i] - x[i]) / dt;
-		x[i] = goal[i] - x[i];
+		v[i] += (goal[i] - x[i]) / dt;
+		x[i] += goal[i] - x[i];
 
 	}
 
@@ -166,25 +219,26 @@ glm::mat3 armaToGlmMat(arma::fmat M, int size)
 	return glmMatrix;
 }
 
+void ParticleSystem::applyGravity(float dt) {
+	arma::fvec3 zeroVec;
+	zeroVec(0) = 0.f;
+	zeroVec(1) = 0.f;
+	zeroVec(2) = 0.f;
+
+	
+	for (int i = 0; i < force.size(); i++) {
+		force[i] = gravityDirection * gravityMagnitude * mass;
+
+		// Add collision impulse and friction
+		
+		v[i] = force[i] / mass *dt;
+		force[i] = zeroVec;
+	}
+}
+
 void ParticleSystem::updatePositions(float dt) {
 	for (int i = 0; i < x.size(); i++)
 	{
 		x[i] += x[i] * dt;
 	}
 }
-/*
-std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p)
-{
-	glm::vec3 glmVec= glm::vec3(1.0);
-
-	for (auto i = p.begin(); i != p.end(); i++) {
-		*i->x;
-		*i->x;
-		*i->x;
-	}
-	glmVec[0] = (float)p.x;
-	glmVec[1] = (float)p.y;
-	glmVec[2] = (float)p.z;
-
-	return glmVec;
-}*/
