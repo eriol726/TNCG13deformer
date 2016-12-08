@@ -35,6 +35,7 @@ public:
 	arma::fvec3 computeCOM();
 	void applyGravity(float dt);
 	void updatePositions(float dt);
+	void updateVelocities(float dt);
 
 private:
 

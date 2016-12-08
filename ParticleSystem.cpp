@@ -20,9 +20,9 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 
 	arma::fvec3 temp_x;
 
-	temp_x(0) = 0.f;
-	temp_x(1) = 0.f;
-	temp_x(2) = 0.f;
+	//temp_x(0) = 0.f;
+	//temp_x(1) = 0.f;
+	//temp_x(2) = 0.f;
 
 	arma::fvec3 temp_force;
 
@@ -44,7 +44,6 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 		goal.push_back(temp_x);
 		v.push_back(temp_v);
 		force.push_back(temp_force);
-
 		
 
 	}
@@ -77,7 +76,14 @@ arma::fvec3 ParticleSystem::computeCOM() {
 	float totalMass = x.size();
 	float w = 1.0f;
 
-	
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+
+	cout << "com_0: " << (1.0f / static_cast<float>(x.size())) * com << endl;
+
+
+	fflush(stdout);
+	fflush(stderr);
 
 	//return (w*com / totalMass)  ;
 	return (1.0f / static_cast<float>(x.size())) * com;
@@ -87,10 +93,12 @@ arma::fvec3 ParticleSystem::computeCOM() {
 
 MPoint ParticleSystem::getPositions(int idx) {
 
-	MPoint pt;
+	MPoint pt = MPoint(0,0,0);
 	pt.x = x[idx][0];
 	pt.y = x[idx][1];
 	pt.z = x[idx][2];
+
+
 
 	return pt;
 }
@@ -128,14 +136,7 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 	arma::fvec3 x_com = computeCOM(); // centerOfMass;
 
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-	cout << "com: " << x_com << endl;
-	cout << "com_0: " << x_com_0 << endl;
-
-
-	fflush(stdout);
-	fflush(stderr);
+	
 
 								 // sida 18, mitten
 	
@@ -225,20 +226,45 @@ void ParticleSystem::applyGravity(float dt) {
 	zeroVec(1) = 0.f;
 	zeroVec(2) = 0.f;
 
-	
+	arma::fvec3 dir;
+
+	dir(0) = 0.f;
+	dir(1) =-1.f;
+	dir(2) = 0.f;
 	for (int i = 0; i < force.size(); i++) {
-		force[i] = gravityDirection * gravityMagnitude * mass;
+		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+		force[i] = dir * 9.82 * mass;
 
 		// Add collision impulse and friction
 		
-		v[i] = force[i] / mass *dt;
-		force[i] = zeroVec;
 	}
 }
 
 void ParticleSystem::updatePositions(float dt) {
 	for (int i = 0; i < x.size(); i++)
 	{
-		x[i] += x[i] * dt;
+
+		x[i] += v[i] * dt;
+
+	}
+
+}
+
+void ParticleSystem::updateVelocities(float dt)
+{
+	// Euler integration
+	arma::fvec3 zeroVec;
+	zeroVec(0) = 0.f;
+	zeroVec(1) = 0.f;
+	zeroVec(2) = 0.f;
+
+	
+
+	for (int i = 0; i < v.size(); ++i)
+	{
+		
+		v[i] += force[i] / mass * dt;
+		force[i] = zeroVec; // Reset all forces
 	}
 }

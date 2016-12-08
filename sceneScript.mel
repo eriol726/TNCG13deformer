@@ -1,25 +1,22 @@
 // Create a plane and a sphere
-polyPlane -ch on -o on -w 10 -h 10 -sw 1 -sh 1 -cuv 2;
-polySphere -ch on -o on;
+//polyPlane -ch on -o on -w 10 -h 10 -sw 1 -sh 1 -cuv 2;
+polySphere -r 1 -sx 20 -sy 20 -ax 0 1 0 -cuv 2 -ch 1;
 move -r 0 4.0 0;
-
-// Create dynamics stuff 
-select -r pPlane1;
-CreatePassiveRigidBody;
 
 
 
 // Put a deformer node on the sphere
-select -r pSphereShape1;
+select -r pSphere1 ;
+CreatePassiveRigidBody;
 Gravity;
 select -r pSphereShape1;
 deformer -type deformerNode;
 
 // Connect the dynamics attributes to the deformer node
 // Gravity Direction
-connectAttr -f gravityField1.direction deformerNode1.gravityDirection;
+//connectAttr -f gravityField1.direction deformerNode1.gravityDirection;
 // Gravity Magnitude
-connectAttr -f gravityField1.magnitude deformerNode1.gravityMagnitude;
+//connectAttr -f gravityField1.magnitude deformerNode1.gravityMagnitude;
 
 // Rigid body attributes
 connectAttr -f time1.outTime deformerNode1.currentTime;

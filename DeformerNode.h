@@ -56,6 +56,7 @@ public:
 
 private:
 	static MTime tPrevious;
-	ParticleSystem* particleSystem;
+	static bool firstFrame;
+	static ParticleSystem* particleSystem;
 };
 #endif

@@ -15,7 +15,8 @@ MObject DeformerNode::aInflation;
 MObject DeformerNode::aMass;
 
 MTime DeformerNode::tPrevious;
-
+bool DeformerNode::firstFrame;
+ParticleSystem* DeformerNode::particleSystem;
 
 
 
@@ -53,7 +54,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 	
 
 
-	if (currentFrame == 1)
+	if (currentFrame == 1 || firstFrame)
 	{
 		
 		std::vector<MPoint> initPositions;
@@ -67,6 +68,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		
 		MVector initVelocity = MVector(0, 0, 0);
 		particleSystem = new ParticleSystem(initPositions, initVelocity);
+
+
 
 		//http://www.ngreen.org/
 
@@ -85,24 +88,24 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		// Get the current frame
 
 		
-
+		firstFrame = false;
 
 
 	}
 	else {
 
-		particleSystem->gravityMagnitude = data.inputValue(aGravityMagnitude).asDouble();
+		//particleSystem->gravityMagnitude = data.inputValue(aGravityMagnitude).asDouble();
 		particleSystem->mass = data.inputValue(aMass).asDouble();
 
+		/*
+		arma::fvec3 gravityDirection;
+		MVector direction = data.inputValue(aGravityDirection).asVector();
 		
-		//arma::fvec3 gravityDirection;
-		//MVector direction = data.inputValue(aGravityDirection).asVector();
-		
-		//gravityDirection(0) = (float)direction.x;
-		//gravityDirection(1) = (float)direction.y;
-		//gravityDirection(2) = (float)direction.z;
+		gravityDirection(0) = (float)direction.x;
+		gravityDirection(1) = (float)direction.y;
+		gravityDirection(2) = (float)direction.z;
 
-		//particleSystem->gravityDirection = gravityDirection;
+		particleSystem->gravityDirection = gravityDirection;*/
 
 		tNow = data.inputValue(aCurrentTime).asTime();
 		MTime timeDiff = tNow - tPrevious;
@@ -117,8 +120,9 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		for (int i = 0; i < updatesPerTimeStep * abs(timeDiffInt); ++i)
 		{
 			particleSystem->applyGravity(dt);
+			particleSystem->updateVelocities(dt);
 			particleSystem->updatePositions(dt);
-			particleSystem->shapeMatch(dt);
+			//particleSystem->shapeMatch(dt);
 		}
 
 		//MPointArray newPositions = particleSystem->getPositions();
@@ -160,6 +164,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 }
 
 MStatus DeformerNode::initialize() {
+
+	firstFrame = true;
 
 	//Setup attributes
 	MFnTypedAttribute tAttr;
