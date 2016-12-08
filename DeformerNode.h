@@ -31,14 +31,9 @@ public:
 	// Unique id
 	static MTypeId id;
 
-	// Global attributes
-	static MObject aGravityMagnitude;
-	static MObject aGravityDirection;
-
 	// Object attributes from rigid body
 	static MObject aCurrentTime;
-	static MObject aLastSceneTime;
-	static MObject aVelocity;
+	static MObject aInitVelocity;
 	static MObject aSpin;
 	static MObject aCenterOfMass;
 	static MObject aImpulse;
@@ -52,11 +47,9 @@ public:
 	static MObject aDynamicFriction;
 	static MObject aForce;
 	static MObject aTorque;
-	static MObject aInflation;
 
 private:
 	static MTime tPrevious;
-	static bool firstFrame;
 	static ParticleSystem* particleSystem;
 };
 #endif

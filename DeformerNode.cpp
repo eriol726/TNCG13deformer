@@ -4,18 +4,14 @@
 #include <sstream>
 #include <maya/MIOStream.h>
 
-#define SIGN(a) (a < 0 ? -1 : 1)
 
 MTypeId DeformerNode::id(0x00000002);
-MObject DeformerNode::aGravityMagnitude;
-MObject DeformerNode::aGravityDirection;
 MObject DeformerNode::aCurrentTime;
-MObject DeformerNode::aInflation;
+MObject DeformerNode::aInitVelocity;
 
 MObject DeformerNode::aMass;
 
 MTime DeformerNode::tPrevious;
-bool DeformerNode::firstFrame;
 ParticleSystem* DeformerNode::particleSystem;
 
 
@@ -33,30 +29,16 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 	MTime tNow = data.inputValue(aCurrentTime).asTime();
 	
-	
-	
 	float env = data.inputValue(envelope).asFloat();
-	float inflation = data.inputValue(aInflation).asDouble();
 
 
-	MTime currTime = data.inputValue(aCurrentTime).asTime();
-	
-	
-
-	//Get the input mesh (fnInputMesh) http://www.chadvernon.com/
-	MArrayDataHandle hInput = data.outputArrayValue(input, &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status)
-		status = hInput.jumpToElement(mIndex);
-	CHECK_MSTATUS_AND_RETURN_IT(status)
-		MObject oInputGeom = hInput.outputValue().child(inputGeom).asMesh();
-	MFnMesh fnInputMesh(oInputGeom);
 
 	
 
-
-	if (currentFrame == 1 || firstFrame)
+	if (currentFrame == 1 )
 	{
 		
+		tPrevious = data.inputValue(aCurrentTime).asTime();
 		std::vector<MPoint> initPositions;
 		
 		for (; !itGeo.isDone(); itGeo.next()) {
@@ -66,29 +48,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 		}
 		
-		MVector initVelocity = MVector(0, 0, 0);
+		MVector initVelocity = data.inputValue(aInitVelocity).asVector();
 		particleSystem = new ParticleSystem(initPositions, initVelocity);
-
-
-
-		//http://www.ngreen.org/
-
-		// Get the normal array from the input mesh
-		MFloatVectorArray normals = MFloatVectorArray();
-		fnInputMesh.getVertexNormals(true, normals, MSpace::kTransform);
-
-
-		MPoint pt;
-		MVector nrm;
-		
-	
-
-		float w = 0.0f;
-		// Loop through the geometry and set vertex positions
-		// Get the current frame
-
-		
-		firstFrame = false;
 
 
 	}
@@ -97,63 +58,44 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		//particleSystem->gravityMagnitude = data.inputValue(aGravityMagnitude).asDouble();
 		particleSystem->mass = data.inputValue(aMass).asDouble();
 
-		/*
-		arma::fvec3 gravityDirection;
-		MVector direction = data.inputValue(aGravityDirection).asVector();
-		
-		gravityDirection(0) = (float)direction.x;
-		gravityDirection(1) = (float)direction.y;
-		gravityDirection(2) = (float)direction.z;
-
-		particleSystem->gravityDirection = gravityDirection;*/
 
 		tNow = data.inputValue(aCurrentTime).asTime();
 		MTime timeDiff = tNow - tPrevious;
 		int timeDiffInt = (int)timeDiff.value();
 		int tNowInt = (int)tNow.value();
+		int tPreviousInt = (int)tPrevious.value();
 		tPrevious = tNow;
 
+		
+		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+		cout << "tNow: " << tNowInt << endl;
+		cout << "timeDiff: " << timeDiffInt << endl;
+		cout << "tPrevious: " << tPreviousInt << endl;
+
+
+
+		fflush(stdout);
+		fflush(stderr);
+
 		int updatesPerTimeStep = 2;
-		float dt = 1 / 24.0 / updatesPerTimeStep * SIGN(timeDiffInt) ;
+		float dt = 1 / 24.0  / updatesPerTimeStep  ;
 
 		
-		for (int i = 0; i < updatesPerTimeStep * abs(timeDiffInt); ++i)
+		for (int i = 0; i < updatesPerTimeStep; ++i)
 		{
 			particleSystem->applyGravity(dt);
 			particleSystem->updateVelocities(dt);
 			particleSystem->updatePositions(dt);
-			//particleSystem->shapeMatch(dt);
+			particleSystem->shapeMatch(dt);
 		}
 
-		//MPointArray newPositions = particleSystem->getPositions();
 	
 		for (; !itGeo.isDone(); itGeo.next()) {
 
 			int idx = itGeo.index();
-			//nrm = MVector(normals[idx]);
-
-			// Get the input point
-			//pt = itGeo.position();
-			/*
-			cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-			cout << "tNow: " << tNowInt << endl;
-			cout << "timeDiff: " << timeDiffInt << endl;
-			cout << "currentFrame: " << currentFrame << endl;
-
-			
-			float position = (float)new_pos.y;
-			cout << "position.x: " << position << endl;
-			
-			fflush(stdout);
-			fflush(stderr);
-
-			*/
 
 			MPoint new_pos = particleSystem->getPositions(idx)*localToWorldMatrixInv;
-
-			
-			
 
 			// Set the new output point
 			itGeo.setPosition(new_pos);
@@ -164,8 +106,6 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 }
 
 MStatus DeformerNode::initialize() {
-
-	firstFrame = true;
 
 	//Setup attributes
 	MFnTypedAttribute tAttr;
@@ -178,19 +118,8 @@ MStatus DeformerNode::initialize() {
 	//24 frames per second
 	uAttr.setDefault(currentFrame.as(MTime::kFilm));
 	uAttr.setChannelBox(true);
+	uAttr.setDefault(1);
 
-	// Gravity magnitude
-	aGravityMagnitude = nAttr.create("gravityMagnitude", "gm", MFnNumericData::kDouble, 0.0);
-	nAttr.setDefault(0.0);
-	nAttr.setMin(0.0);
-	nAttr.setMax(10.0);
-	nAttr.setChannelBox(true);
-
-	aGravityDirection = nAttr.create("gravityDirection", "gd", MFnNumericData::k3Double, 0.0);
-	nAttr.setDefault(0.0);
-	nAttr.setMin(-1.0);
-	nAttr.setMax(1.0);
-	nAttr.setChannelBox(true);
 
 	aMass = nAttr.create("Mass", "ms", MFnNumericData::kDouble, 0.0);
 	nAttr.setDefault(1.0);
@@ -198,7 +127,9 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(10.0);
 	nAttr.setChannelBox(true);
 
-	aInflation = nAttr.create("inflation", "in", MFnNumericData::kDouble, 0.0);
+
+	aInitVelocity = nAttr.create("initVelocity", "iv", MFnNumericData::k3Double, 0.0);
+	nAttr.setDefault(1.0);
 	nAttr.setMin(0.0);
 	nAttr.setMax(10.0);
 	nAttr.setChannelBox(true);
@@ -206,17 +137,13 @@ MStatus DeformerNode::initialize() {
 
 	// Add the attribute
 	addAttribute(aCurrentTime);
-	addAttribute(aGravityMagnitude);
-	addAttribute(aGravityDirection);
-	addAttribute(aInflation);
 	addAttribute(aMass);
+	addAttribute(aInitVelocity);
 
 	// Link inputs that change the output of the mesh
 	attributeAffects(aCurrentTime, outputGeom);
-	attributeAffects(aGravityMagnitude, outputGeom);
-	attributeAffects(aGravityDirection, outputGeom);
-	attributeAffects(aInflation, outputGeom);
 	attributeAffects(aMass, outputGeom);
+	attributeAffects(aInitVelocity, outputGeom);
 
 	// Make the deformer weights paintable
 	//MGlobal::executeCommand("makePaintable -attrType multiFloat -sm deformer blendNode weights;");

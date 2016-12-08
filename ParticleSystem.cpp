@@ -198,24 +198,19 @@ void ParticleSystem::applyGravity(float dt) {
 	arma::fvec3 zeroVec;
 
 	zeroVec.zeros();
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
-	cout << "zeroVec: " << zeroVec<< endl;
-
-
-
-	fflush(stdout);
-	fflush(stderr);
 
 	arma::fvec3 dir;
 
-	dir(0) = 0.f;
-	dir(1) =-1.f;
-	dir(2) = 0.f;
+	dir(0) = gravityDirection.x;
+	dir(1) = gravityDirection.y;
+	dir(2) =  gravityDirection.z;
+
+
 	for (int i = 0; i < force.size(); i++) {
 		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
-		force[i] = dir * 9.82 * mass;
+		force[i] = dir * gravityMagnitude * mass;
 
 		float elasticity = 0.2f;
 		float dynamicFriction = 0.2f;
@@ -258,7 +253,6 @@ void ParticleSystem::updateVelocities(float dt)
 	arma::fvec3 zeroVec;
 	zeroVec.zeros();
 
-	
 
 	for (int i = 0; i < v.size(); ++i)
 	{

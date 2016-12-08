@@ -23,9 +23,9 @@ public:
 	~ParticleSystem() ;
 
 
-	double gravityMagnitude;
+	const double gravityMagnitude = 9.82;
 	double mass;
-	arma::fvec3 gravityDirection;
+	glm::vec3 gravityDirection = glm::vec3(0.0, -1.0, 0.0);
 
 	MPoint getPositions(int idx);
 	std::vector<MPoint> shapeMatch(float dt);
