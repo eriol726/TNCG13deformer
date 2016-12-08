@@ -25,10 +25,7 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 	//temp_x(2) = 0.f;
 
 	arma::fvec3 temp_force;
-
-	temp_force(0) = 0.f;
-	temp_force(1) = 0.f;
-	temp_force(2) = 0.f;
+	temp_force.zeros();
 
 	for (auto i = initP.begin(); i != initP.end(); i++) {
 		
@@ -94,9 +91,9 @@ arma::fvec3 ParticleSystem::computeCOM() {
 MPoint ParticleSystem::getPositions(int idx) {
 
 	MPoint pt = MPoint(0,0,0);
-	pt.x = x[idx][0];
-	pt.y = x[idx][1];
-	pt.z = x[idx][2];
+	pt.x = x[idx](0);
+	pt.y = x[idx](1);
+	pt.z = x[idx](2);
 
 
 
@@ -196,35 +193,19 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	return positions;
 }
 
-glm::vec3 armaToGlmVec(arma::fvec v, int size)
-{
-	glm::vec3 tempVec = glm::vec3(0.0f);
-
-	tempVec.x = v(0);
-	tempVec.y = v(1);
-	tempVec.z = v(2);
-	
-	return tempVec;
-}
-
-glm::mat3 armaToGlmMat(arma::fmat M, int size)
-{
-	glm::mat3 glmMatrix = glm::mat3(1.0);
-
-	for (int r = 0; r < size; r++) {
-		for (int c = 0; c < size; c++) {
-			glmMatrix[r][c] = M(r, c);
-		}
-	}
-		
-	return glmMatrix;
-}
 
 void ParticleSystem::applyGravity(float dt) {
 	arma::fvec3 zeroVec;
-	zeroVec(0) = 0.f;
-	zeroVec(1) = 0.f;
-	zeroVec(2) = 0.f;
+
+	zeroVec.zeros();
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+	cout << "zeroVec: " << zeroVec<< endl;
+
+
+
+	fflush(stdout);
+	fflush(stderr);
 
 	arma::fvec3 dir;
 
@@ -236,6 +217,26 @@ void ParticleSystem::applyGravity(float dt) {
 
 		force[i] = dir * 9.82 * mass;
 
+		float elasticity = 0.2f;
+		float dynamicFriction = 0.2f;
+		// adding force from floor
+		if (x[i](1) <= 0) {
+			arma::fvec3 normal;
+			normal(0) = 0.f;
+			normal(1) = 1.f;
+			normal(2) = 0.f;
+
+			arma::fvec3 vDiff = (v[i]) - zeroVec; // Floor is static
+
+			arma::fvec3 vDiff1 = normal * arma::dot(normal, vDiff); // vDiff composant in normal direction
+			arma::fvec3 vDiff2 = vDiff - vDiff1; // vDiff composant orthogonal to normal direction
+
+			arma::fvec3 collisionImpulse = -(elasticity + 1) * vDiff1 * mass;
+			arma::fvec3 frictionImpulse = -dynamicFriction * vDiff2 * mass;
+
+			force[i] += (collisionImpulse + frictionImpulse) / dt;
+			x[i](1) = 0.01;
+		}
 		// Add collision impulse and friction
 		
 	}
@@ -255,9 +256,7 @@ void ParticleSystem::updateVelocities(float dt)
 {
 	// Euler integration
 	arma::fvec3 zeroVec;
-	zeroVec(0) = 0.f;
-	zeroVec(1) = 0.f;
-	zeroVec(2) = 0.f;
+	zeroVec.zeros();
 
 	
 
