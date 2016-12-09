@@ -38,6 +38,8 @@ public:
 	static MObject aDynamicFriction;
 	static MObject aElasticity;
 	static MObject aDeformation;
+	static MObject aJelly;
+	static MObject aStiffnes;
 
 private:
 	static MTime tPrevious;

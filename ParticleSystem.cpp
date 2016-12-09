@@ -147,6 +147,12 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
+	
+	if (det(R) < 0) {
+		R(0, 2) = -R(0, 2);
+		R(1, 2) = -R(1, 2);
+		R(2, 2) = -R(2, 2);
+	}
 	/*
 	//ensuring that det(A) = 1, To make sure that volume is conserved
 	A = A/ pow(arma::det(A), 1 / 3);
@@ -154,6 +160,7 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	//Aply linera matrix to the rotation matrix 
 	R_linear = (beta*A + (1.0f - beta) * R);
 
+	/*
 	// computing the goal positions
 	for (int i = 0; i < x.size(); i++) {
 		goal[i] = R_linear * (x_0[i] - x_com_0) + x_com;
@@ -166,13 +173,15 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	arma::fmat q_tilde = arma::fmat(9, x.size());
 	arma::fmat p_tiled = arma::fmat(3, x.size());
 	arma::fmat A_tiled = arma::fmat(3, 3);
-	arma::fmat Q = arma::fmat(3, 3);
-	arma::fmat M = arma::fmat(3, 3);
+	arma::fmat A_3x3 = arma::fmat(3, 3);
+	arma::fmat Q_3x3 = arma::fmat(3, 3);
+	arma::fmat M_3x3 = arma::fmat(3, 3);
 	arma::fmat Apq_tiled;
 	arma::fmat Aqq_tiled;
-	arma::fmat R_tiled = arma::fmat(3, 9);
+	arma::fmat R_tiled ;
 	arma::fmat zeros3x3 = arma::fmat(3, 3);
 	arma::fmat R_linear_tiled;
+	arma::fmat R_AQM;
 
 	
 	for (int i = 0; i < x.size(); ++i)
@@ -199,24 +208,68 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 	A_tiled = Apq_tiled*Aqq_tiled;
 
-	A_tiled = A_tiled / pow(arma::det(A_tiled), 1 / 3);
+	// creating R_tiled [R 0 0]
+	zeros3x3.zeros();
 
-	R_tiled.insert_cols(0,R);
+	R_tiled.insert_cols(0, R);
 	R_tiled.insert_cols(3, zeros3x3);
 	R_tiled.insert_cols(6, zeros3x3);
 
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+	cout << "R_tiled: " << R_tiled << endl;
+
+
+	fflush(stdout);
+	fflush(stderr);
+
+	
 	R_linear_tiled = (beta*A_tiled + (1.0f - beta) * R_tiled);
+	
+	// splitting A_tiled into A Q M matrices
+	A_3x3 = R_linear_tiled.submat(0, 0, 2, 2);
+	Q_3x3 = R_linear_tiled.submat(0, 3, 2, 5);
+	M_3x3 = R_linear_tiled.submat(0, 6, 2, 8);
+
+	// modifing the matrix
+	A_3x3 = A_3x3 / pow(arma::det(A_3x3), 1 / 3);
+	Q_3x3 = Q_3x3.t();
+	M_3x3 = M_3x3;
+
+
+	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+	cout << "A_3x3.size: " << A_3x3.size() << endl;
+	cout << "Q_3x3.size: " << Q_3x3.size() << endl;
+	cout << "M_3x3.size: " << M_3x3.size() << endl;
+	cout << "R_linear_tiled: " << R_linear_tiled << endl;
+
+
+	fflush(stdout);
+	fflush(stderr);
+
+	// copy the sub matrx back
+	
+	R_AQM.insert_cols(0, A_3x3);
+	R_AQM.insert_cols(3, Q_3x3);
+	R_AQM.insert_cols(6, M_3x3);
+
+	
+	R_AQM = R_AQM*q_tilde;
+	
 
 	for (int i = 0; i < x.size(); i++) {
-		goal[i] = R_linear_tiled * (x_0[i] - x_com_0) + x_com;
+		goal[i](0) = R_AQM.row(0)(i)+ x_com(0);
+		goal[i](1) = R_AQM.row(1)(i)+ x_com(1);
+		goal[i](2) = R_AQM.row(2)(i)+ x_com(2);
 	}
  
 	// updating the final positions an velocity
 	for (int i = 0; i < x.size(); i++) {
-		v[i] += (goal[i] - x[i]) / dt;
-		x[i] += goal[i] - x[i];
+		v[i] += stiffnes*jelly*(goal[i] - x[i]) / dt;
+		x[i] += stiffnes*(goal[i] - x[i]);
 	}
-
+	
 	
 
 

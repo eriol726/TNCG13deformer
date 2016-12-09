@@ -12,6 +12,8 @@ MObject DeformerNode::aMass;
 MObject DeformerNode::aDynamicFriction;
 MObject DeformerNode::aElasticity;
 MObject DeformerNode::aDeformation;
+MObject DeformerNode::aJelly;
+MObject DeformerNode::aStiffnes;
 
 MTime DeformerNode::tPrevious;
 ParticleSystem* DeformerNode::particleSystem;
@@ -62,6 +64,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		particleSystem->elasticity = data.inputValue(aElasticity).asDouble();
 		particleSystem->dynamicFriction = data.inputValue(aDynamicFriction).asDouble();
 		particleSystem->beta = data.inputValue(aDeformation).asDouble();
+		particleSystem->jelly = data.inputValue(aJelly).asDouble();
+		particleSystem->stiffnes = data.inputValue(aStiffnes).asDouble();
 
 
 		tNow = data.inputValue(aCurrentTime).asTime();
@@ -157,6 +161,18 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(1.0);
 	nAttr.setChannelBox(true);
 
+	aJelly = nAttr.create("jelly", "je", MFnNumericData::kDouble, 0.0);
+	nAttr.setDefault(0.5);
+	nAttr.setMin(0.0);
+	nAttr.setMax(1.0);
+	nAttr.setChannelBox(true);
+
+	aStiffnes = nAttr.create("stiffnes", "st", MFnNumericData::kDouble, 0.0);
+	nAttr.setDefault(0.5);
+	nAttr.setMin(0.0);
+	nAttr.setMax(1.0);
+	nAttr.setChannelBox(true);
+
 
 	// Add the attribute
 	addAttribute(aCurrentTime);
@@ -165,6 +181,8 @@ MStatus DeformerNode::initialize() {
 	addAttribute(aElasticity);
 	addAttribute(aDynamicFriction);
 	addAttribute(aDeformation);
+	addAttribute(aStiffnes);
+	addAttribute(aJelly);
 
 	// Link inputs that change the output of the mesh
 	attributeAffects(aCurrentTime, outputGeom);
@@ -173,6 +191,8 @@ MStatus DeformerNode::initialize() {
 	attributeAffects(aElasticity, outputGeom);
 	attributeAffects(aDynamicFriction, outputGeom);
 	attributeAffects(aDeformation, outputGeom);
+	attributeAffects(aStiffnes, outputGeom);
+	attributeAffects(aJelly, outputGeom);
 
 	// Make the deformer weights paintable
 	//MGlobal::executeCommand("makePaintable -attrType multiFloat -sm deformer blendNode weights;");

@@ -18,6 +18,9 @@ public:
 	double elasticity;
 	double dynamicFriction;
 	double beta;
+	double jelly;
+	double stiffnes;
+	
 
 	glm::vec3 gravityDirection = glm::vec3(0.0, -1.0, 0.0);
 
