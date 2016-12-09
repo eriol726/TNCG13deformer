@@ -97,21 +97,10 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 			particleSystem->updatePositions(dt);
 
 			if (deformMethod) {
-				cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
-				cout << "shapeMatchQuadric" << endl;
-
-				fflush(stdout);
-				fflush(stderr);
 				particleSystem->shapeMatchQuadratic(dt);
 			}
 			else {
-				cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-				cout << "shapeMatchLinear" << endl;
-
-				fflush(stdout);
-				fflush(stderr);
 
 				particleSystem->shapeMatchLinear(dt);
 			}

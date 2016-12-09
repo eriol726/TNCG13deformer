@@ -65,15 +65,12 @@ arma::fvec3 ParticleSystem::computeCOM() {
 }
 
 
-
 MPoint ParticleSystem::getPositions(int idx) {
 
 	MPoint pt = MPoint(0,0,0);
 	pt.x = x[idx](0);
 	pt.y = x[idx](1);
 	pt.z = x[idx](2);
-
-
 
 	return pt;
 }
@@ -89,8 +86,6 @@ arma::fmat ParticleSystem::computeR(float dt) {
 	arma::fmat U;
 	arma::fmat V;
 	arma::fvec s;
-
-
 
 	// center of mass of actual shape, t
 	arma::fvec3 x_com = computeCOM();
@@ -126,26 +121,16 @@ arma::fmat ParticleSystem::computeR(float dt) {
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
 
-	/*
-	if (det(R) < 0) {
-		R(0, 2) = -R(0, 2);
-		R(1, 2) = -R(1, 2);
-		R(2, 2) = -R(2, 2);
-	}*/
-
 	return R;
 
 }
 
 void ParticleSystem::shapeMatchLinear(float dt) {
 
-	
 	arma::fmat R = computeR( dt);
 	arma::fvec3 x_com = computeCOM();
 	arma::fmat R_linear;
 	
-	
-
 	//Aply linera matrix to the rotation matrix
 	R_linear = (beta*A + (1.0f - beta) * R);
 
@@ -213,7 +198,6 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	R_tiled.insert_cols(0, R);
 	R_tiled.insert_cols(3, zeros3x3);
 	R_tiled.insert_cols(6, zeros3x3);
-
 	
 	R_linear_tiled = (beta*A_tiled + (1.0f - beta) * R_tiled);
 	
@@ -225,16 +209,13 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	//ensuring that det(A) = 1
 	A_3x3 = A_3x3 / pow(arma::det(A_3x3), 1 / 3);
 
-
 	// copy the sub matrx back
 	AQM.insert_cols(0, A_3x3);
 	AQM.insert_cols(3, Q_3x3);
 	AQM.insert_cols(6, M_3x3);
 
-	
 	R_tiled = AQM*q_tilde;
 	
-
 	for (int i = 0; i < x.size(); i++) {
 		goal[i](0) = R_tiled.row(0)(i)+ x_com(0);
 		goal[i](1) = R_tiled.row(1)(i)+ x_com(1);
@@ -248,17 +229,15 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 	
-	
 }
 
 
-
-
 void ParticleSystem::applyGravity(float dt) {
+	
 	arma::fvec3 planeVelocity;
-
 	planeVelocity.zeros();
-	float planeMass = mass*2;
+	//just setting plane mass to sommething 
+	float planeMass = mass*3;
 
 	arma::fvec3 dir;
 
@@ -271,16 +250,15 @@ void ParticleSystem::applyGravity(float dt) {
 
 		mg[i] = dir * gravityMagnitude * mass;
 		force[i] = mg[i];
-
 		
-		// adding force from floor
+		// adding forces from floor 
 		if (x[i](1) <= 0) {
 			arma::fvec3 normal;
 			normal(0) = 0.f;
 			normal(1) = 1.f;
 			normal(2) = 0.f;
 
-			arma::fvec3 relativeVelocity = v[i] - planeVelocity; // Floor is static
+			arma::fvec3 relativeVelocity = v[i] - planeVelocity; 
 
 			arma::fvec3 contactNormal = normal * arma::dot(relativeVelocity, normal); // vDiff composant in normal direction
 
@@ -293,10 +271,8 @@ void ParticleSystem::applyGravity(float dt) {
 
 			// derivative of impluse gives a force
 			force[i] = mg[i] + (impulseAmplitude + frictionImpulse) / dt;
-			x[i](1) = 0.01;
+			x[i](1) = 0.001f;
 		}
-		// Add collision impulse and friction
-		
 	}
 }
 
