@@ -65,27 +65,16 @@ arma::fvec3 ParticleSystem::computeCOM() {
 	com(2) = 0.f;
 
 	int inx = 0;
-	for (auto i = x.begin(); i != x.end(); i++) {
-		com += *i;
-		
-		
+	for (int i = 0; i < x.size(); i++)
+	{
+		com += x[i];
 	}
+		
 	
 	float totalMass = x.size();
 	float w = 1.0f;
 
-	/*
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-
-	cout << "com_0: " << (1.0f / static_cast<float>(x.size())) * com << endl;
-
-
-	fflush(stdout);
-	fflush(stderr);*/
-
-	//return (w*com / totalMass)  ;
-	return (1.0f / static_cast<float>(x.size())) * com;
+	return (1.0f / totalMass) * com;
 }
 
 
@@ -102,29 +91,28 @@ MPoint ParticleSystem::getPositions(int idx) {
 	return pt;
 }
 
-std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
-	
+arma::fmat ParticleSystem::computeR(float dt) {
 	// Allocate
 	arma::fmat q = arma::fmat(3, x.size());
 	arma::fmat p = arma::fmat(3, x.size());
 	arma::fmat Apq;
 	arma::fmat Aqq;
-	arma::fmat A;
 	arma::fmat S;
 	arma::fmat R;
-	arma::fmat R_linear;
 	arma::fmat U;
 	arma::fmat V;
 	arma::fvec s;
 
+
+
 	// center of mass of actual shape, t
-	arma::fvec3 x_com = computeCOM(); 
-	
+	arma::fvec3 x_com = computeCOM();
+
 	//define the relative locations,  sida 18, mitten
 	for (int i = 0; i < x.size(); ++i)
 	{
 		p(0, i) = x[i](0) - x_com(0);
-		p(1, i) = x[i](1)- x_com(1);
+		p(1, i) = x[i](1) - x_com(1);
 		p(2, i) = x[i](2) - x_com(2);
 
 		q(0, i) = x_0[i](0) - x_com_0(0);
@@ -144,32 +132,54 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	// linear transformation matrix
 	A = Apq*Aqq;
 
+	//ensuring that det(A) = 1, To make sure that volume is conserved
+	A = A / pow(arma::det(A), 1 / 3);
+
 	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
-	
+
+	/*
 	if (det(R) < 0) {
 		R(0, 2) = -R(0, 2);
 		R(1, 2) = -R(1, 2);
 		R(2, 2) = -R(2, 2);
-	}
-	/*
-	//ensuring that det(A) = 1, To make sure that volume is conserved
-	A = A/ pow(arma::det(A), 1 / 3);
+	}*/
 
-	//Aply linera matrix to the rotation matrix 
+	return R;
+
+}
+
+std::vector<MPoint> ParticleSystem::shapeMatchLinear(float dt) {
+
+	
+	arma::fmat R = computeR( dt);
+	arma::fvec3 x_com = computeCOM();
+	arma::fmat R_linear;
+	
+	
+
+	//Aply linera matrix to the rotation matrix
 	R_linear = (beta*A + (1.0f - beta) * R);
 
-	/*
+	
 	// computing the goal positions
 	for (int i = 0; i < x.size(); i++) {
-		goal[i] = R_linear * (x_0[i] - x_com_0) + x_com;
+		goal[i] = R * (x_0[i] - x_com_0) + x_com;
 	}
-	
-	*/
-	//----------------------------------------
+
+	// updating the final positions an velocity
+	for (int i = 0; i < x.size(); i++) {
+		v[i] += stiffnes*jelly*(goal[i] - x[i]) / dt;
+		x[i] += stiffnes*(goal[i] - x[i]);
+	}
+
+	return positions;
+}
+
+std::vector<MPoint> ParticleSystem::shapeMatchQuadratic(float dt) {
+
 	// Allocate
-	
 	arma::fmat q_tilde = arma::fmat(9, x.size());
 	arma::fmat p_tiled = arma::fmat(3, x.size());
 	arma::fmat A_tiled = arma::fmat(3, 3);
@@ -181,8 +191,10 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	arma::fmat R_tiled ;
 	arma::fmat zeros3x3 = arma::fmat(3, 3);
 	arma::fmat R_linear_tiled;
-	arma::fmat R_AQM;
+	arma::fmat AQM;
+	arma::fmat R = computeR(dt);
 
+	arma::fvec3 x_com = computeCOM();
 	
 	for (int i = 0; i < x.size(); ++i)
 	{
@@ -215,13 +227,7 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	R_tiled.insert_cols(3, zeros3x3);
 	R_tiled.insert_cols(6, zeros3x3);
 
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-	cout << "R_tiled: " << R_tiled << endl;
-
-
-	fflush(stdout);
-	fflush(stderr);
+	
 
 	
 	R_linear_tiled = (beta*A_tiled + (1.0f - beta) * R_tiled);
@@ -233,35 +239,23 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 	// modifing the matrix
 	A_3x3 = A_3x3 / pow(arma::det(A_3x3), 1 / 3);
-	Q_3x3 = Q_3x3.t();
+	Q_3x3 = Q_3x3;
 	M_3x3 = M_3x3;
 
 
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-	cout << "A_3x3.size: " << A_3x3.size() << endl;
-	cout << "Q_3x3.size: " << Q_3x3.size() << endl;
-	cout << "M_3x3.size: " << M_3x3.size() << endl;
-	cout << "R_linear_tiled: " << R_linear_tiled << endl;
-
-
-	fflush(stdout);
-	fflush(stderr);
-
 	// copy the sub matrx back
-	
-	R_AQM.insert_cols(0, A_3x3);
-	R_AQM.insert_cols(3, Q_3x3);
-	R_AQM.insert_cols(6, M_3x3);
+	AQM.insert_cols(0, A_3x3);
+	AQM.insert_cols(3, Q_3x3);
+	AQM.insert_cols(6, M_3x3);
 
 	
-	R_AQM = R_AQM*q_tilde;
+	R_tiled = AQM*q_tilde;
 	
 
 	for (int i = 0; i < x.size(); i++) {
-		goal[i](0) = R_AQM.row(0)(i)+ x_com(0);
-		goal[i](1) = R_AQM.row(1)(i)+ x_com(1);
-		goal[i](2) = R_AQM.row(2)(i)+ x_com(2);
+		goal[i](0) = R_tiled.row(0)(i)+ x_com(0);
+		goal[i](1) = R_tiled.row(1)(i)+ x_com(1);
+		goal[i](2) = R_tiled.row(2)(i)+ x_com(2);
 	}
  
 	// updating the final positions an velocity
@@ -275,6 +269,8 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 
 	return positions;
 }
+
+
 
 
 void ParticleSystem::applyGravity(float dt) {

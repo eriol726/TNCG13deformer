@@ -96,7 +96,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 			particleSystem->applyGravity(dt);
 			particleSystem->updateVelocities(dt);
 			particleSystem->updatePositions(dt);
-			particleSystem->shapeMatch(dt);
+			particleSystem->shapeMatchQuadratic(dt);
 		}
 
 	

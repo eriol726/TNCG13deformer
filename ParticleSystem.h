@@ -20,12 +20,17 @@ public:
 	double beta;
 	double jelly;
 	double stiffnes;
+	// linear transformation matrix
+	arma::fmat A;
 	
 
 	glm::vec3 gravityDirection = glm::vec3(0.0, -1.0, 0.0);
 
 	MPoint getPositions(int idx);
-	std::vector<MPoint> shapeMatch(float dt);
+	arma::fmat computeR(float dt);
+	std::vector<MPoint> shapeMatchLinear(float dt);
+	std::vector<MPoint> shapeMatchQuadratic(float dt);
+	void deform(float dt);
 	glm::mat3 armaToGlmMat(arma::fmat M, int size);
 	glm::vec3 armaToGlmMat(arma::fvec v, int size);
 	std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p);
