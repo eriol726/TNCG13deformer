@@ -3,39 +3,27 @@
 
 ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 
-	/*
-	x.resize(initP.size());
-	x_0.resize(initP.size());
-	v.resize(initP.size());
-	force.resize(initP.size());
-	goal.resize(initP.size());
-	positions.resize(initP.size());*/
 
-	
+	// initialize dynamic arrays
 	arma::fvec3 temp_v;
+	temp_v.zeros();
 
 	temp_v[0] = velocity.x;
 	temp_v[1] = velocity.y;
 	temp_v[2] = velocity.z;
 
 	arma::fvec3 temp_x;
-
-	//temp_x(0) = 0.f;
-	//temp_x(1) = 0.f;
-	//temp_x(2) = 0.f;
+	temp_x.zeros();
 
 	arma::fvec3 temp_force;
 	temp_force.zeros();
 
 	for (auto i = initP.begin(); i != initP.end(); i++) {
 		
-		
-		
 		temp_x(0) = (float)i->x;
 		temp_x(1) = (float)i->y;
 		temp_x(2) = (float)i->z;
 
-		positions.push_back(*i);
 		x.push_back(temp_x);
 		x_0.push_back(temp_x);
 		goal.push_back(temp_x);
@@ -43,7 +31,6 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 		force.push_back(temp_force);
 		mg.push_back(temp_force);
 		
-
 	}
 
 	
@@ -150,7 +137,7 @@ arma::fmat ParticleSystem::computeR(float dt) {
 
 }
 
-std::vector<MPoint> ParticleSystem::shapeMatchLinear(float dt) {
+void ParticleSystem::shapeMatchLinear(float dt) {
 
 	
 	arma::fmat R = computeR( dt);
@@ -167,17 +154,17 @@ std::vector<MPoint> ParticleSystem::shapeMatchLinear(float dt) {
 	for (int i = 0; i < x.size(); i++) {
 		goal[i] = R * (x_0[i] - x_com_0) + x_com;
 	}
-
+	
 	// updating the final positions an velocity
 	for (int i = 0; i < x.size(); i++) {
 		v[i] += stiffnes*jelly*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 
-	return positions;
 }
+ 
 
-std::vector<MPoint> ParticleSystem::shapeMatchQuadratic(float dt) {
+void ParticleSystem::shapeMatchQuadratic(float dt) {
 
 	// Allocate
 	arma::fmat q_tilde = arma::fmat(9, x.size());
@@ -228,8 +215,6 @@ std::vector<MPoint> ParticleSystem::shapeMatchQuadratic(float dt) {
 	R_tiled.insert_cols(6, zeros3x3);
 
 	
-
-	
 	R_linear_tiled = (beta*A_tiled + (1.0f - beta) * R_tiled);
 	
 	// splitting A_tiled into A Q M matrices
@@ -237,10 +222,8 @@ std::vector<MPoint> ParticleSystem::shapeMatchQuadratic(float dt) {
 	Q_3x3 = R_linear_tiled.submat(0, 3, 2, 5);
 	M_3x3 = R_linear_tiled.submat(0, 6, 2, 8);
 
-	// modifing the matrix
+	//ensuring that det(A) = 1
 	A_3x3 = A_3x3 / pow(arma::det(A_3x3), 1 / 3);
-	Q_3x3 = Q_3x3;
-	M_3x3 = M_3x3;
 
 
 	// copy the sub matrx back
@@ -259,15 +242,13 @@ std::vector<MPoint> ParticleSystem::shapeMatchQuadratic(float dt) {
 	}
  
 	// updating the final positions an velocity
+	
 	for (int i = 0; i < x.size(); i++) {
 		v[i] += stiffnes*jelly*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 	
 	
-
-
-	return positions;
 }
 
 
@@ -324,9 +305,7 @@ void ParticleSystem::updatePositions(float dt) {
 	// integrating velocity gives distance
 	for (int i = 0; i < x.size(); i++)
 	{
-
 		x[i] += v[i] * dt;
-
 	}
 
 }
@@ -344,6 +323,6 @@ void ParticleSystem::updateVelocities(float dt)
 		//F=ma
 		acceleration = force[i] / mass;
 		v[i] += acceleration * dt;
-		force[i] = zeroVec; // Reset all forces
+		force[i] = zeroVec;
 	}
 }

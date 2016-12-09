@@ -28,12 +28,9 @@ public:
 
 	MPoint getPositions(int idx);
 	arma::fmat computeR(float dt);
-	std::vector<MPoint> shapeMatchLinear(float dt);
-	std::vector<MPoint> shapeMatchQuadratic(float dt);
-	void deform(float dt);
-	glm::mat3 armaToGlmMat(arma::fmat M, int size);
-	glm::vec3 armaToGlmMat(arma::fvec v, int size);
-	std::vector<glm::vec3> mpointToGlmVec(std::vector<MPoint> p);
+	void shapeMatchLinear(float dt);
+	void shapeMatchQuadratic(float dt);
+
 	arma::fvec3 computeCOM();
 	void applyGravity(float dt);
 	void updatePositions(float dt);

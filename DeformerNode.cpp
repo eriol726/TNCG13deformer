@@ -14,6 +14,7 @@ MObject DeformerNode::aElasticity;
 MObject DeformerNode::aDeformation;
 MObject DeformerNode::aJelly;
 MObject DeformerNode::aStiffnes;
+MObject DeformerNode::aDeformMethod;
 
 MTime DeformerNode::tPrevious;
 ParticleSystem* DeformerNode::particleSystem;
@@ -41,31 +42,38 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 	if (currentFrame == 1 )
 	{
+		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+		cout << "load" << endl;
+
+		fflush(stdout);
+		fflush(stderr);
 		
 		tPrevious = data.inputValue(aCurrentTime).asTime();
 		std::vector<MPoint> initPositions;
 		
+		// load the mesh vertices into particles 
 		for (; !itGeo.isDone(); itGeo.next()) {
 
 			MPoint pt = itGeo.position()*localToWorldMatrix;
 			initPositions.push_back(pt); 
-
 		}
 		
 		MVector initVelocity = data.inputValue(aInitVelocity).asVector();
 		particleSystem = new ParticleSystem(initPositions, initVelocity);
 
-
 	}
 	else {
 
-		//particleSystem->gravityMagnitude = data.inputValue(aGravityMagnitude).asDouble();
 		particleSystem->mass = data.inputValue(aMass).asDouble();
 		particleSystem->elasticity = data.inputValue(aElasticity).asDouble();
 		particleSystem->dynamicFriction = data.inputValue(aDynamicFriction).asDouble();
 		particleSystem->beta = data.inputValue(aDeformation).asDouble();
 		particleSystem->jelly = data.inputValue(aJelly).asDouble();
 		particleSystem->stiffnes = data.inputValue(aStiffnes).asDouble();
+		bool deformMethod  = data.inputValue(aDeformMethod).asBool();
+
+		
 
 
 		tNow = data.inputValue(aCurrentTime).asTime();
@@ -75,30 +83,39 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		int tPreviousInt = (int)tPrevious.value();
 		tPrevious = tNow;
 
-		
-		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-		cout << "tNow: " << tNowInt << endl;
-		cout << "timeDiff: " << timeDiffInt << endl;
-		cout << "tPrevious: " << tPreviousInt << endl;
-
-
-
-		fflush(stdout);
-		fflush(stderr);
 
 		int timeStep = 2;
 		float dt = 1 / (24.0  * timeStep)  ;
 
 		
+		
 		for (int i = 0; i < timeStep; ++i)
 		{
+				
 			particleSystem->applyGravity(dt);
 			particleSystem->updateVelocities(dt);
 			particleSystem->updatePositions(dt);
-			particleSystem->shapeMatchQuadratic(dt);
-		}
 
+			if (deformMethod) {
+				cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+				cout << "shapeMatchQuadric" << endl;
+
+				fflush(stdout);
+				fflush(stderr);
+				particleSystem->shapeMatchQuadratic(dt);
+			}
+			else {
+				cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+				cout << "shapeMatchLinear" << endl;
+
+				fflush(stdout);
+				fflush(stderr);
+
+				particleSystem->shapeMatchLinear(dt);
+			}
+		}
 	
 		for (; !itGeo.isDone(); itGeo.next()) {
 
@@ -120,6 +137,7 @@ MStatus DeformerNode::initialize() {
 	MFnTypedAttribute tAttr;
 	MFnNumericAttribute nAttr;
 	MFnUnitAttribute uAttr;
+	MFnEnumAttribute eAttr;
 
 	// Time
 	aCurrentTime = uAttr.create("currentTime", "tm", MFnUnitAttribute::kTime, 0.0);
@@ -173,6 +191,13 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(1.0);
 	nAttr.setChannelBox(true);
 
+	//aDeformMethod = eAttr.create("method", "me", 0);
+	aDeformMethod = nAttr.create("method", "me", MFnNumericData::kBoolean, 0.0);
+	nAttr.setStorable(true);
+	nAttr.setDefault(true);
+	nAttr.setChannelBox(true);
+
+
 
 	// Add the attribute
 	addAttribute(aCurrentTime);
@@ -183,6 +208,7 @@ MStatus DeformerNode::initialize() {
 	addAttribute(aDeformation);
 	addAttribute(aStiffnes);
 	addAttribute(aJelly);
+	addAttribute(aDeformMethod);
 
 	// Link inputs that change the output of the mesh
 	attributeAffects(aCurrentTime, outputGeom);
@@ -193,6 +219,7 @@ MStatus DeformerNode::initialize() {
 	attributeAffects(aDeformation, outputGeom);
 	attributeAffects(aStiffnes, outputGeom);
 	attributeAffects(aJelly, outputGeom);
+	attributeAffects(aDeformMethod, outputGeom);
 
 	// Make the deformer weights paintable
 	//MGlobal::executeCommand("makePaintable -attrType multiFloat -sm deformer blendNode weights;");

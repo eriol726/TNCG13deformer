@@ -16,6 +16,7 @@
 #include <maya/MFnUnitAttribute.h>
 #include <maya/MPxDeformerNode.h>
 #include <maya/MAnimControl.h>
+#include <maya/MFnEnumAttribute.h>
 #include "ParticleSystem.h"
 
 
@@ -40,6 +41,7 @@ public:
 	static MObject aDeformation;
 	static MObject aJelly;
 	static MObject aStiffnes;
+	static MObject aDeformMethod;
 
 private:
 	static MTime tPrevious;
