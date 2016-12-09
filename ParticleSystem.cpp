@@ -74,6 +74,7 @@ arma::fvec3 ParticleSystem::computeCOM() {
 	float totalMass = x.size();
 	float w = 1.0f;
 
+	/*
 	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
 
@@ -81,7 +82,7 @@ arma::fvec3 ParticleSystem::computeCOM() {
 
 
 	fflush(stdout);
-	fflush(stderr);
+	fflush(stderr);*/
 
 	//return (w*com / totalMass)  ;
 	return (1.0f / static_cast<float>(x.size())) * com;
@@ -146,7 +147,7 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
-
+	/*
 	//ensuring that det(A) = 1, To make sure that volume is conserved
 	A = A/ pow(arma::det(A), 1 / 3);
 
@@ -157,9 +158,59 @@ std::vector<MPoint> ParticleSystem::shapeMatch(float dt) {
 	for (int i = 0; i < x.size(); i++) {
 		goal[i] = R_linear * (x_0[i] - x_com_0) + x_com;
 	}
+	
+	*/
+	//----------------------------------------
+	// Allocate
+	
+	arma::fmat q_tilde = arma::fmat(9, x.size());
+	arma::fmat p_tiled = arma::fmat(3, x.size());
+	arma::fmat A_tiled = arma::fmat(3, 3);
+	arma::fmat Q = arma::fmat(3, 3);
+	arma::fmat M = arma::fmat(3, 3);
+	arma::fmat Apq_tiled;
+	arma::fmat Aqq_tiled;
+	arma::fmat R_tiled = arma::fmat(3, 9);
+	arma::fmat zeros3x3 = arma::fmat(3, 3);
+	arma::fmat R_linear_tiled;
 
+	
+	for (int i = 0; i < x.size(); ++i)
+	{
+		p_tiled(0, i) = x[i](0) - x_com(0);
+		p_tiled(1, i) = x[i](1) - x_com(1);
+		p_tiled(2, i) = x[i](2) - x_com(2);
 
+		q_tilde(0, i) = x_0[i](0) - x_com_0(0);
+		q_tilde(1, i) = x_0[i](1) - x_com_0(1);
+		q_tilde(2, i) = x_0[i](2) - x_com_0(2);
+		q_tilde(3, i) = q_tilde(0, i)*q_tilde(0, i);
+		q_tilde(4, i) = q_tilde(1, i)*q_tilde(1, i);
+		q_tilde(5, i) = q_tilde(2, i)*q_tilde(2, i);
+		q_tilde(6, i) = q_tilde(0, i)*q_tilde(1, i);
+		q_tilde(7, i) = q_tilde(1, i)*q_tilde(2, i);
+		q_tilde(8, i) = q_tilde(2, i)*q_tilde(0, i);
+	}
+	
+	float mass_tiled = 1.0f;
+	Apq_tiled = mass_tiled*p_tiled*q_tilde.t();
 
+	Aqq_tiled = (mass_tiled*q_tilde*q_tilde.t()).i();
+
+	A_tiled = Apq_tiled*Aqq_tiled;
+
+	A_tiled = A_tiled / pow(arma::det(A_tiled), 1 / 3);
+
+	R_tiled.insert_cols(0,R);
+	R_tiled.insert_cols(3, zeros3x3);
+	R_tiled.insert_cols(6, zeros3x3);
+
+	R_linear_tiled = (beta*A_tiled + (1.0f - beta) * R_tiled);
+
+	for (int i = 0; i < x.size(); i++) {
+		goal[i] = R_linear_tiled * (x_0[i] - x_com_0) + x_com;
+	}
+ 
 	// updating the final positions an velocity
 	for (int i = 0; i < x.size(); i++) {
 		v[i] += (goal[i] - x[i]) / dt;
@@ -185,19 +236,8 @@ void ParticleSystem::applyGravity(float dt) {
 	dir(1) = gravityDirection.y;
 	dir(2) =  gravityDirection.z;
 
-	cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-	cout << "elasticity: " << elasticity << endl;
-	cout << "dynamicFriction: " << dynamicFriction << endl;
-
-
-
-	fflush(stdout);
-	fflush(stderr);
-
 
 	for (int i = 0; i < force.size(); i++) {
-		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 
 		mg[i] = dir * gravityMagnitude * mass;
 		force[i] = mg[i];

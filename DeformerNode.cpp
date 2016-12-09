@@ -151,7 +151,7 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(1.0);
 	nAttr.setChannelBox(true);
 
-	aDynamicFriction = nAttr.create("deformation", "de", MFnNumericData::kDouble, 0.0);
+	aDeformation = nAttr.create("deformation", "de", MFnNumericData::kDouble, 0.0);
 	nAttr.setDefault(0.5);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
