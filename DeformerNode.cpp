@@ -12,7 +12,7 @@ MObject DeformerNode::aMass;
 MObject DeformerNode::aDynamicFriction;
 MObject DeformerNode::aElasticity;
 MObject DeformerNode::aDeformation;
-MObject DeformerNode::aJelly;
+MObject DeformerNode::aDamping;
 MObject DeformerNode::aStiffnes;
 MObject DeformerNode::aDeformMethod;
 
@@ -36,9 +36,6 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 	
 	float env = data.inputValue(envelope).asFloat();
 
-
-
-	
 
 	if (currentFrame == 1 )
 	{
@@ -64,32 +61,35 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 
 	}
 	else {
-
+		// User inputs
 		particleSystem->mass = data.inputValue(aMass).asDouble();
 		particleSystem->elasticity = data.inputValue(aElasticity).asDouble();
 		particleSystem->dynamicFriction = data.inputValue(aDynamicFriction).asDouble();
 		particleSystem->beta = data.inputValue(aDeformation).asDouble();
-		particleSystem->jelly = data.inputValue(aJelly).asDouble();
+		particleSystem->damping = data.inputValue(aDamping).asDouble();
 		particleSystem->stiffnes = data.inputValue(aStiffnes).asDouble();
 		bool deformMethod  = data.inputValue(aDeformMethod).asBool();
 
 		
-
-
 		tNow = data.inputValue(aCurrentTime).asTime();
 		MTime timeDiff = tNow - tPrevious;
 		int timeDiffInt = (int)timeDiff.value();
-		int tNowInt = (int)tNow.value();
-		int tPreviousInt = (int)tPrevious.value();
 		tPrevious = tNow;
 
-
+		// Since we want to update with t+h, we upade with timeDiff
 		int timeStep = 2;
-		float dt = 1 / (24.0  * timeStep)  ;
+		float fps = 24.0f;
+		float dt = 1 / (fps  * timeStep * abs(timeDiffInt))  ;
 
+		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
 		
+		cout << "timeDiffInt: " << timeDiffInt <<  endl;
+		cout << "dt: " << dt << endl;
 		
-		for (int i = 0; i < timeStep; ++i)
+		fflush(stdout);
+		fflush(stderr);
+		
+		for (int i = 0; i < timeStep * abs(timeDiffInt); ++i)
 		{
 				
 			particleSystem->applyGravity(dt);
@@ -168,7 +168,7 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(1.0);
 	nAttr.setChannelBox(true);
 
-	aJelly = nAttr.create("jelly", "je", MFnNumericData::kDouble, 0.0);
+	aDamping = nAttr.create("damping", "da", MFnNumericData::kDouble, 0.0);
 	nAttr.setDefault(0.5);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
@@ -196,7 +196,7 @@ MStatus DeformerNode::initialize() {
 	addAttribute(aDynamicFriction);
 	addAttribute(aDeformation);
 	addAttribute(aStiffnes);
-	addAttribute(aJelly);
+	addAttribute(aDamping);
 	addAttribute(aDeformMethod);
 
 	// Link inputs that change the output of the mesh
@@ -207,7 +207,7 @@ MStatus DeformerNode::initialize() {
 	attributeAffects(aDynamicFriction, outputGeom);
 	attributeAffects(aDeformation, outputGeom);
 	attributeAffects(aStiffnes, outputGeom);
-	attributeAffects(aJelly, outputGeom);
+	attributeAffects(aDamping, outputGeom);
 	attributeAffects(aDeformMethod, outputGeom);
 
 	// Make the deformer weights paintable

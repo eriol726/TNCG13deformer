@@ -46,18 +46,13 @@ ParticleSystem::~ParticleSystem(){}
 arma::fvec3 ParticleSystem::computeCOM() {
 	// same value for all dimensions
 	arma::fvec3 com;
+	com.zeros();
 
-	com(0) = 0.f;
-	com(1) = 0.f;
-	com(2) = 0.f;
-
-	int inx = 0;
 	for (int i = 0; i < x.size(); i++)
 	{
 		com += x[i];
 	}
 		
-	
 	float totalMass = x.size();
 	float w = 1.0f;
 
@@ -121,6 +116,7 @@ arma::fmat ParticleSystem::computeR(float dt) {
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
 
+
 	return R;
 
 }
@@ -129,20 +125,20 @@ void ParticleSystem::shapeMatchLinear(float dt) {
 
 	arma::fmat R = computeR( dt);
 	arma::fvec3 x_com = computeCOM();
-	arma::fmat R_linear;
+	arma::fmat T_linear;
 	
 	//Aply linera matrix to the rotation matrix
-	R_linear = (beta*A + (1.0f - beta) * R);
+	T_linear = (beta*A + (1.0f - beta) * R);
 
 	
 	// computing the goal positions
 	for (int i = 0; i < x.size(); i++) {
-		goal[i] = R * (x_0[i] - x_com_0) + x_com;
+		goal[i] = T_linear * (x_0[i] - x_com_0) + x_com;
 	}
 	
 	// updating the final positions an velocity
 	for (int i = 0; i < x.size(); i++) {
-		v[i] += stiffnes*jelly*(goal[i] - x[i]) / dt;
+		v[i] += stiffnes*damping*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 
@@ -155,14 +151,14 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	arma::fmat q_tilde = arma::fmat(9, x.size());
 	arma::fmat p_tiled = arma::fmat(3, x.size());
 	arma::fmat A_tiled = arma::fmat(3, 3);
-	arma::fmat A_3x3 = arma::fmat(3, 3);
-	arma::fmat Q_3x3 = arma::fmat(3, 3);
-	arma::fmat M_3x3 = arma::fmat(3, 3);
+	arma::fmat A = arma::fmat(3, 3);
+	arma::fmat Q = arma::fmat(3, 3);
+	arma::fmat M = arma::fmat(3, 3);
 	arma::fmat Apq_tiled;
 	arma::fmat Aqq_tiled;
 	arma::fmat R_tiled ;
 	arma::fmat zeros3x3 = arma::fmat(3, 3);
-	arma::fmat R_linear_tiled;
+	arma::fmat T_quadric;
 	arma::fmat AQM;
 	arma::fmat R = computeR(dt);
 
@@ -199,22 +195,24 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	R_tiled.insert_cols(3, zeros3x3);
 	R_tiled.insert_cols(6, zeros3x3);
 	
-	R_linear_tiled = (beta*A_tiled + (1.0f - beta) * R_tiled);
+	T_quadric = (beta*A_tiled + (1.0f - beta) * R_tiled);
 	
 	// splitting A_tiled into A Q M matrices
-	A_3x3 = R_linear_tiled.submat(0, 0, 2, 2);
-	Q_3x3 = R_linear_tiled.submat(0, 3, 2, 5);
-	M_3x3 = R_linear_tiled.submat(0, 6, 2, 8);
+	A = T_quadric.submat(0, 0, 2, 2);
+	Q = T_quadric.submat(0, 3, 2, 5);
+	M = T_quadric.submat(0, 6, 2, 8);
 
 	//ensuring that det(A) = 1
-	A_3x3 = A_3x3 / pow(arma::det(A_3x3), 1 / 3);
+	A = A / pow(arma::det(A), 1 / 3);
 
 	// copy the sub matrx back
-	AQM.insert_cols(0, A_3x3);
-	AQM.insert_cols(3, Q_3x3);
-	AQM.insert_cols(6, M_3x3);
+	AQM.insert_cols(0, A);
+	AQM.insert_cols(3, Q);
+	AQM.insert_cols(6, M);
 
 	R_tiled = AQM*q_tilde;
+
+
 	
 	for (int i = 0; i < x.size(); i++) {
 		goal[i](0) = R_tiled.row(0)(i)+ x_com(0);
@@ -225,7 +223,7 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	// updating the final positions an velocity
 	
 	for (int i = 0; i < x.size(); i++) {
-		v[i] += stiffnes*jelly*(goal[i] - x[i]) / dt;
+		v[i] += stiffnes*damping*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 	
@@ -260,17 +258,18 @@ void ParticleSystem::applyGravity(float dt) {
 
 			arma::fvec3 relativeVelocity = v[i] - planeVelocity; 
 
-			arma::fvec3 contactNormal = normal * arma::dot(relativeVelocity, normal); // vDiff composant in normal direction
+			// composant in normal direction
+			arma::fvec3 contactNormal = normal * arma::dot(relativeVelocity, normal); 
 
 			// Collision response http://gafferongames.com/virtual-go/collision-response-and-coulomb-friction/
 			arma::fvec3 linearMomentum = relativeVelocity*mass;
-			arma::fvec3 impulseAmplitude = -(elasticity + 1) * contactNormal / (1/mass +1/planeMass);
+			arma::fvec3 impulseMagnitude = -(elasticity + 1) * contactNormal / (1/mass +1/planeMass);
 
 			// Coulomb Friction
 			arma::fvec3 frictionImpulse = -dynamicFriction * contactNormal * mass;
 
 			// derivative of impluse gives a force
-			force[i] = mg[i] + (impulseAmplitude + frictionImpulse) / dt;
+			force[i] = mg[i]+(impulseMagnitude + frictionImpulse) / dt;
 			x[i](1) = 0.001f;
 		}
 	}

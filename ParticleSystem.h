@@ -18,7 +18,7 @@ public:
 	double elasticity;
 	double dynamicFriction;
 	double beta;
-	double jelly;
+	double damping;
 	double stiffnes;
 	// linear transformation matrix
 	arma::fmat A;
