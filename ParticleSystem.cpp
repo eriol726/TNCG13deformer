@@ -107,13 +107,9 @@ arma::fmat ParticleSystem::computeR(float dt) {
 	// linear transformation matrix
 	A = Apq*Aqq;
 
-	//ensuring that det(A) = 1, To make sure that volume is conserved unless the determinant is too small
-	if (arma::det(A) > 0.1) {
-		A = A / pow(arma::det(A), 1 / 3.0f);
-	}
-	else {
-		A = A / pow(0.1, 1 / 3.0f);
-	}
+	//ensuring that det(A) = 1, To make sure that volume is conserved
+	A = A / pow(arma::det(A), 1 / 3.0f);
+
 
 	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
@@ -204,22 +200,9 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	Q = T_quadric.submat(0, 3, 2, 5);
 	M = T_quadric.submat(0, 6, 2, 8);
 
-
 	// volume preservation and rescale
-	if (arma::det(A) > 0.1) {
-		A = A / pow(arma::det(A), 1/3.0f);
-	}
-	else {
-		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-
-		cout << "less than 0.1" << arma::det(A) << endl;
-
-		fflush(stdout);
-		fflush(stderr);
-		A = A /  pow(0.1, 1/3.0f);
-	}
-
-
+	A = A / pow(arma::det(A), 1/3.0f);
+	
 	// copy the sub matrx back
 	AQM.insert_cols(0, A);
 	AQM.insert_cols(3, Q);
