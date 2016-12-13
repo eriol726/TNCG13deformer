@@ -30,15 +30,11 @@ ParticleSystem::ParticleSystem(std::vector<MPoint> initP, MVector velocity) {
 		v.push_back(temp_v);
 		force.push_back(temp_force);
 		mg.push_back(temp_force);
-		
 	}
 
-	
 	// center of mass of initial shape t_0
 	x_com_0 = computeCOM();
-	
 }
-
 
 ParticleSystem::~ParticleSystem(){}
 
@@ -55,7 +51,6 @@ arma::fvec3 ParticleSystem::computeCOM() {
 		
 	float totalMass = x.size();
 	
-
 	return (1.0f / totalMass) * com;
 }
 
@@ -97,7 +92,6 @@ arma::fmat ParticleSystem::computeR(float dt) {
 		q(2, i) = x_0[i](2) - x_com_0(2);
 	}
 
-
 	// rotation part
 	Apq = particleMass * p * q.t();
 
@@ -110,14 +104,11 @@ arma::fmat ParticleSystem::computeR(float dt) {
 	//ensuring that det(A) = 1, To make sure that volume is conserved
 	A = A / pow(arma::det(A), 1 / 3.0f);
 
-
 	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
 	R = V * U.t();
 
-
 	return R;
-
 }
 
 void ParticleSystem::shapeMatchLinear(float dt) {
@@ -140,7 +131,6 @@ void ParticleSystem::shapeMatchLinear(float dt) {
 		v[i] += stiffnes*bounciness*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
-
 }
  
 
@@ -210,8 +200,6 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 
 	R_tiled = AQM*q_tilde;
 
-
-	
 	for (int i = 0; i < x.size(); i++) {
 		goal[i](0) = R_tiled.row(0)(i)+ x_com(0);
 		goal[i](1) = R_tiled.row(1)(i)+ x_com(1);
@@ -219,14 +207,12 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	}
  
 	// updating the final positions an velocity
-	
 	for (int i = 0; i < x.size(); i++) {
+
 		v[i] += stiffnes*bounciness*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
-	
 }
-
 
 void ParticleSystem::applyGravity(float dt) {
 	

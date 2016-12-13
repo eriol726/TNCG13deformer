@@ -36,7 +36,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 	
 	float env = data.inputValue(envelope).asFloat();
 
-
+	// initialize the vertex position to the particle system
 	if (currentFrame == 1 )
 	{
 		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
@@ -76,15 +76,14 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		int timeDiffInt = (int)timeDiff.value();
 		tPrevious = tNow;
 
-		// Since we want to update with t+h, we upade with timeDiff
+		// Since we want to update with t+h, we upadet with timeDiff
 		int timeStep = 2;
 		float fps = 24.0f;
 		float dt = 1 / (fps  * timeStep * abs(timeDiffInt))  ;
 
-		
+		//updateing forces, positions, velocity and do the shape matching
 		for (int i = 0; i < timeStep * abs(timeDiffInt); ++i)
 		{
-				
 			particleSystem->applyGravity(dt);
 			particleSystem->updateVelocities(dt);
 			particleSystem->updatePositions(dt);
@@ -98,7 +97,8 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 				particleSystem->shapeMatchLinear(dt);
 			}
 		}
-	
+		
+		// assign the new calculated paticle positions to the mesh
 		for (; !itGeo.isDone(); itGeo.next()) {
 
 			int idx = itGeo.index();
