@@ -39,7 +39,7 @@ public:
 	static MObject aDynamicFriction;
 	static MObject aElasticity;
 	static MObject aDeformation;
-	static MObject aDamping;
+	static MObject aBounciness;
 	static MObject aStiffnes;
 	static MObject aDeformMethod;
 

@@ -14,12 +14,14 @@ public:
 
 
 	const double gravityMagnitude = 9.82;
+	const float particleMass = 1.0f;
 	double mass;
 	double elasticity;
 	double dynamicFriction;
 	double beta;
-	double damping;
+	double bounciness;
 	double stiffnes;
+	
 	// linear transformation matrix
 	arma::fmat A;
 	

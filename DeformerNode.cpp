@@ -12,7 +12,7 @@ MObject DeformerNode::aMass;
 MObject DeformerNode::aDynamicFriction;
 MObject DeformerNode::aElasticity;
 MObject DeformerNode::aDeformation;
-MObject DeformerNode::aDamping;
+MObject DeformerNode::aBounciness;
 MObject DeformerNode::aStiffnes;
 MObject DeformerNode::aDeformMethod;
 
@@ -66,7 +66,7 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		particleSystem->elasticity = data.inputValue(aElasticity).asDouble();
 		particleSystem->dynamicFriction = data.inputValue(aDynamicFriction).asDouble();
 		particleSystem->beta = data.inputValue(aDeformation).asDouble();
-		particleSystem->damping = data.inputValue(aDamping).asDouble();
+		particleSystem->bounciness = data.inputValue(aBounciness).asDouble();
 		particleSystem->stiffnes = data.inputValue(aStiffnes).asDouble();
 		bool deformMethod  = data.inputValue(aDeformMethod).asBool();
 
@@ -81,13 +81,6 @@ MStatus DeformerNode::deform(MDataBlock& data, MItGeometry& itGeo,
 		float fps = 24.0f;
 		float dt = 1 / (fps  * timeStep * abs(timeDiffInt))  ;
 
-		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
-		
-		cout << "timeDiffInt: " << timeDiffInt <<  endl;
-		cout << "dt: " << dt << endl;
-		
-		fflush(stdout);
-		fflush(stderr);
 		
 		for (int i = 0; i < timeStep * abs(timeDiffInt); ++i)
 		{
@@ -168,7 +161,7 @@ MStatus DeformerNode::initialize() {
 	nAttr.setMax(1.0);
 	nAttr.setChannelBox(true);
 
-	aDamping = nAttr.create("damping", "da", MFnNumericData::kDouble, 0.0);
+	aBounciness = nAttr.create("Waving", "da", MFnNumericData::kDouble, 0.0);
 	nAttr.setDefault(0.5);
 	nAttr.setMin(0.0);
 	nAttr.setMax(1.0);
@@ -196,7 +189,7 @@ MStatus DeformerNode::initialize() {
 	addAttribute(aDynamicFriction);
 	addAttribute(aDeformation);
 	addAttribute(aStiffnes);
-	addAttribute(aDamping);
+	addAttribute(aBounciness);
 	addAttribute(aDeformMethod);
 
 	// Link inputs that change the output of the mesh
@@ -207,7 +200,7 @@ MStatus DeformerNode::initialize() {
 	attributeAffects(aDynamicFriction, outputGeom);
 	attributeAffects(aDeformation, outputGeom);
 	attributeAffects(aStiffnes, outputGeom);
-	attributeAffects(aDamping, outputGeom);
+	attributeAffects(aBounciness, outputGeom);
 	attributeAffects(aDeformMethod, outputGeom);
 
 	// Make the deformer weights paintable

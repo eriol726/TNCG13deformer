@@ -50,11 +50,11 @@ arma::fvec3 ParticleSystem::computeCOM() {
 
 	for (int i = 0; i < x.size(); i++)
 	{
-		com += x[i];
+		com += particleMass*x[i];
 	}
 		
 	float totalMass = x.size();
-	float w = 1.0f;
+	
 
 	return (1.0f / totalMass) * com;
 }
@@ -97,20 +97,23 @@ arma::fmat ParticleSystem::computeR(float dt) {
 		q(2, i) = x_0[i](2) - x_com_0(2);
 	}
 
-	// mass of each paticles
-	float m = 1.0f;
 
 	// rotation part
-	Apq = m * p * q.t();
+	Apq = particleMass * p * q.t();
 
 	// scaling part
-	Aqq = (m*q*q.t()).i();
+	Aqq = (particleMass*q*q.t()).i();
 
 	// linear transformation matrix
 	A = Apq*Aqq;
 
-	//ensuring that det(A) = 1, To make sure that volume is conserved
-	A = A / pow(arma::det(A), 1 / 3);
+	//ensuring that det(A) = 1, To make sure that volume is conserved unless the determinant is too small
+	if (arma::det(A) > 0.1) {
+		A = A / pow(arma::det(A), 1 / 3.0f);
+	}
+	else {
+		A = A / pow(0.1, 1 / 3.0f);
+	}
 
 	// Find rotation matrix by Singular value decomposition, should be polar decomposition
 	arma::svd(U, s, V, Apq);
@@ -138,7 +141,7 @@ void ParticleSystem::shapeMatchLinear(float dt) {
 	
 	// updating the final positions an velocity
 	for (int i = 0; i < x.size(); i++) {
-		v[i] += stiffnes*damping*(goal[i] - x[i]) / dt;
+		v[i] += stiffnes*bounciness*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 
@@ -181,10 +184,9 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 		q_tilde(8, i) = q_tilde(2, i)*q_tilde(0, i);
 	}
 	
-	float mass_tiled = 1.0f;
-	Apq_tiled = mass_tiled*p_tiled*q_tilde.t();
+	Apq_tiled = particleMass*p_tiled*q_tilde.t();
 
-	Aqq_tiled = (mass_tiled*q_tilde*q_tilde.t()).i();
+	Aqq_tiled = (particleMass*q_tilde*q_tilde.t()).i();
 
 	A_tiled = Apq_tiled*Aqq_tiled;
 
@@ -197,13 +199,26 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	
 	T_quadric = (beta*A_tiled + (1.0f - beta) * R_tiled);
 	
-	// splitting A_tiled into A Q M matrices
+	// splitting A_tiled into sub matrices A Q M 
 	A = T_quadric.submat(0, 0, 2, 2);
 	Q = T_quadric.submat(0, 3, 2, 5);
 	M = T_quadric.submat(0, 6, 2, 8);
 
-	//ensuring that det(A) = 1
-	A = A / pow(arma::det(A), 1 / 3);
+
+	// volume preservation and rescale
+	if (arma::det(A) > 0.1) {
+		A = A / pow(arma::det(A), 1/3.0f);
+	}
+	else {
+		cout.rdbuf(cerr.rdbuf()); //hack to get error messages out in Maya 2016.5
+
+		cout << "less than 0.1" << arma::det(A) << endl;
+
+		fflush(stdout);
+		fflush(stderr);
+		A = A /  pow(0.1, 1/3.0f);
+	}
+
 
 	// copy the sub matrx back
 	AQM.insert_cols(0, A);
@@ -223,7 +238,7 @@ void ParticleSystem::shapeMatchQuadratic(float dt) {
 	// updating the final positions an velocity
 	
 	for (int i = 0; i < x.size(); i++) {
-		v[i] += stiffnes*damping*(goal[i] - x[i]) / dt;
+		v[i] += stiffnes*bounciness*(goal[i] - x[i]) / dt;
 		x[i] += stiffnes*(goal[i] - x[i]);
 	}
 	
@@ -263,7 +278,7 @@ void ParticleSystem::applyGravity(float dt) {
 
 			// Collision response http://gafferongames.com/virtual-go/collision-response-and-coulomb-friction/
 			arma::fvec3 linearMomentum = relativeVelocity*mass;
-			arma::fvec3 impulseMagnitude = -(elasticity + 1) * contactNormal / (1/mass +1/planeMass);
+			arma::fvec3 impulseMagnitude = -(elasticity + 1) * contactNormal / (1/mass /*+1/planeMass*/);
 
 			// Coulomb Friction
 			arma::fvec3 frictionImpulse = -dynamicFriction * contactNormal * mass;
